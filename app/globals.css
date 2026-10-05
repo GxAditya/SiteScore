@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* User requested palette:
+     #5C7057 (deep sage)
+     #89A482 (medium sage)
+     #ACC5A6 (soft sage)
+     #D1EDD3 (pale sage mint)
+  */
+  --color-sage-50: #f6f9f5;
+  --color-sage-100: #D1EDD3;
+  --color-sage-200: #ACC5A6;
+  --color-sage-300: #89A482;
+  --color-sage-400: #718d6a;
+  --color-sage-500: #5C7057;
+  --color-sage-600: #4a5b46;
+  --color-sage-700: #394636;
+  --color-sage-800: #2a3328;
+  --color-sage-900: #1b211a;
+  --color-sage-950: #0f140f;
+
+  /* Complementary palette: Warm terracotta / coral */
+  --color-coral-50: #fdf6f3;
+  --color-coral-100: #fbe8e1;
+  --color-coral-200: #f6d0c2;
+  --color-coral-300: #eeae99;
+  --color-coral-400: #e4866b;
+  --color-coral-500: #D97757;
+  --color-coral-600: #c2593b;
+  --color-coral-700: #a2442a;
+  --color-coral-800: #853a25;
+  --color-coral-900: #6d3322;
+  --color-coral-950: #3b170e;
+
+  /* Accent mapped to sage */
+  --color-accent-50: #f6f9f5;
+  --color-accent-100: #D1EDD3;
+  --color-accent-200: #ACC5A6;
+  --color-accent-300: #89A482;
+  --color-accent-400: #718d6a;
+  --color-accent-500: #5C7057;
+  --color-accent-600: #4a5b46;
+  --color-accent-700: #394636;
+  --color-accent-800: #2a3328;
+  --color-accent-900: #1b211a;
+
+  /* Score grade colors */
+  --color-grade-a: #5C7057;
+  --color-grade-b: #89A482;
+  --color-grade-c: #D97706;
+  --color-grade-d: #C2593B;
+
+  /* Border radius */
+  --radius-card: 14px;
+  --radius-card-lg: 18px;
+  --radius-input: 12px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(15, 20, 15, 0.05), 0 4px 16px -8px rgba(15, 20, 15, 0.1);
+  --shadow-lift: 0 1px 2px rgba(15, 20, 15, 0.06), 0 12px 32px -12px rgba(15, 20, 15, 0.2);
+  --shadow-accent-ring: 0 0 0 1px rgba(92, 112, 87, 0.3), 0 8px 30px -12px rgba(92, 112, 87, 0.4);
+  --shadow-coral-ring: 0 0 0 1px rgba(217, 119, 87, 0.3), 0 8px 30px -12px rgba(217, 119, 87, 0.35);
+  --shadow-builder: 0 20px 40px -15px rgba(27, 33, 26, 0.12);
+}
+
+/* Design tokens: light surface default, dark via .dark */
+:root {
+  --surface: #F8FAF7;
+  --surface-raised: #FFFFFF;
+  --surface-sunken: #EEF3EC;
+  --surface-border: #DDE5DB;
+  --text: #172116;
+  --text-muted: #536351;
+  --accent: #5C7057;
+  --accent-strong: #4a5b46;
+  --accent-soft: #ACC5A6;
+  --accent-tint: #D1EDD3;
+  --complement: #D97757;
+  --complement-strong: #c2593b;
+  --ring: rgb(92 112 87 / 0.35);
+  color-scheme: light;
+}
+
+.dark {
+  --surface: #0E140F;
+  --surface-raised: #151D16;
+  --surface-sunken: #1C261E;
+  --surface-border: #253327;
+  --text: #F1F6F0;
+  --text-muted: #9BAEA0;
+  --accent: #ACC5A6;
+  --accent-strong: #D1EDD3;
+  --accent-soft: #89A482;
+  --accent-tint: rgba(92, 112, 87, 0.25);
+  --complement: #F0A084;
+  --complement-strong: #f7b7a2;
+  --ring: rgb(172 197 166 / 0.4);
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: rgba(209, 237, 211, 0.7);
+  color: #1b211a;
+}
+
+.dark ::selection {
+  background: rgba(92, 112, 87, 0.5);
+  color: #F1F6F0;
+}
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Search-hit highlight */
+mark {
+  background-color: rgba(209, 237, 211, 0.8);
+  color: inherit;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.dark mark {
+  background-color: rgba(92, 112, 87, 0.6);
+  color: #D1EDD3;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    var(--surface-sunken) 40%,
+    rgba(172, 197, 166, 0.25) 50%,
+    var(--surface-sunken) 60%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(137, 164, 130, 0.4) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(137, 164, 130, 0.35);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(92, 112, 87, 0.6);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .print-block {
+    break-inside: avoid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .skeleton {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .translucent {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
