@@ -23,7 +23,7 @@ interface AuditFormProps {
 }
 
 const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-100 dark:focus:ring-zinc-100";
+  "w-full rounded-md border border-sage-300/80 bg-white px-3 py-2 text-sm text-sage-950 outline-none transition-colors placeholder:text-sage-400 focus:border-sage-500 focus:ring-2 focus:ring-sage-500/20 dark:border-sage-700 dark:bg-sage-950 dark:text-sage-50 dark:placeholder:text-sage-500 dark:focus:border-sage-400 dark:focus:ring-sage-400/20";
 
 const SAMPLES = [
   { label: "Blog post", url: "https://example.com/blog/launch-notes" },
@@ -91,21 +91,21 @@ export default function AuditForm({
         e.preventDefault();
         if (canSubmit) onSubmit();
       }}
-      className="w-full rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-6"
+      className="w-full rounded-xl border border-sage-200 bg-white p-5 shadow-card dark:border-sage-800 dark:bg-sage-950 sm:p-6"
       aria-label="Audit request form"
     >
       <div className="grid gap-4">
         <div>
           <label
             htmlFor="audit-url"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            className="mb-1 block text-sm font-medium text-sage-800 dark:text-sage-200"
           >
-            Page URL <span aria-hidden="true" className="text-red-600">*</span>
+            Page URL <span aria-hidden="true" className="text-coral-600">*</span>
           </label>
           <div className="relative">
             <LinkIcon
               aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sage-400"
             />
             <input
               id="audit-url"
@@ -124,18 +124,19 @@ export default function AuditForm({
           </div>
           <p
             id="audit-url-help"
+            role={hint.kind === "error" ? "alert" : undefined}
             className={
               hint.kind === "error"
-                ? "mt-1 text-xs text-red-600 dark:text-red-400"
+                ? "mt-1 text-xs font-medium text-coral-700 dark:text-coral-300"
                 : hint.kind === "note"
-                  ? "mt-1 text-xs text-emerald-700 dark:text-emerald-400"
-                  : "mt-1 text-xs text-zinc-500 dark:text-zinc-400"
+                  ? "mt-1 text-xs text-sage-700 dark:text-sage-300"
+                  : "mt-1 text-xs text-sage-500 dark:text-sage-400"
             }
           >
             {hint.text}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="text-xs text-sage-500 dark:text-sage-400">
               Try:
             </span>
             {SAMPLES.map((s) => (
@@ -144,7 +145,7 @@ export default function AuditForm({
                 type="button"
                 onClick={() => set({ url: s.url })}
                 aria-label={`Use sample URL: ${s.url}`}
-                className="rounded-full border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-900 active:scale-[0.98] dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-zinc-50"
+                className="rounded-full border border-sage-200 px-2.5 py-1 text-xs font-medium text-sage-700 transition-colors hover:border-sage-400 hover:bg-sage-100 hover:text-sage-950 active:scale-[0.98] dark:border-sage-800 dark:text-sage-300 dark:hover:border-sage-600 dark:hover:bg-sage-900 dark:hover:text-sage-100"
               >
                 {s.label}
               </button>
@@ -155,10 +156,10 @@ export default function AuditForm({
         <div>
           <label
             htmlFor="audit-query"
-            className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            className="mb-1 block text-sm font-medium text-sage-800 dark:text-sage-200"
           >
             Target search query{" "}
-            <span className="font-normal text-zinc-500 dark:text-zinc-400">
+            <span className="font-normal text-sage-500 dark:text-sage-400">
               (optional)
             </span>
           </label>
@@ -174,39 +175,39 @@ export default function AuditForm({
           />
           <p
             id="audit-query-help"
-            className="mt-1 text-xs text-zinc-500 dark:text-zinc-400"
+            className="mt-1 text-xs text-sage-500 dark:text-sage-400"
           >
             Leave empty to auto-derive the query from the page title, H1, or
             meta description. The report shows which source was used.
           </p>
         </div>
 
-        <div className="rounded-md border border-zinc-200 dark:border-zinc-700">
+        <div className="rounded-xl border border-sage-200 dark:border-sage-800">
           <button
             type="button"
             aria-expanded={advancedOpen}
             aria-controls="advanced-keys"
             onClick={() => setAdvancedOpen((o) => !o)}
-            className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-sage-800 transition-colors hover:bg-sage-100/70 dark:text-sage-200 dark:hover:bg-sage-900/60"
           >
             <span>Advanced: API keys (optional)</span>
             <CaretDown
               aria-hidden="true"
-              className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+              className={`h-4 w-4 transition-transform duration-200 ${advancedOpen ? "rotate-180" : ""}`}
             />
           </button>
           {advancedOpen && (
             <div
               id="advanced-keys"
-              className="grid gap-4 border-t border-zinc-200 p-3 dark:border-zinc-700"
+              className="grid gap-4 border-t border-sage-200 p-3 dark:border-sage-800"
             >
               <div>
                 <label
                   htmlFor="audit-tinyfish-key"
-                  className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                  className="mb-1 block text-sm font-medium text-sage-800 dark:text-sage-200"
                 >
                   TinyFish API key{" "}
-                  <span className="font-normal text-zinc-500 dark:text-zinc-400">
+                  <span className="font-normal text-sage-500 dark:text-sage-400">
                     (BYOK)
                   </span>
                 </label>
@@ -225,10 +226,10 @@ export default function AuditForm({
                 <div>
                   <label
                     htmlFor="audit-llm-key"
-                    className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                    className="mb-1 block text-sm font-medium text-sage-800 dark:text-sage-200"
                   >
                     Gemini API key{" "}
-                    <span className="font-normal text-zinc-500 dark:text-zinc-400">
+                    <span className="font-normal text-sage-500 dark:text-sage-400">
                       (optional)
                     </span>
                   </label>
@@ -246,7 +247,7 @@ export default function AuditForm({
                 <div>
                   <label
                     htmlFor="audit-llm-provider"
-                    className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+                    className="mb-1 block text-sm font-medium text-sage-800 dark:text-sage-200"
                   >
                     Summary provider
                   </label>
@@ -267,8 +268,8 @@ export default function AuditForm({
                   </select>
                 </div>
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Keys are sent to <code>/api/audit</code> and used server-side
+              <p className="text-xs leading-relaxed text-sage-500 dark:text-sage-400">
+                Keys are sent to <code className="rounded bg-sage-100 px-1 py-0.5 font-mono text-[11px] dark:bg-sage-900">/api/audit</code> and used server-side
                 only — they never go to TinyFish from your browser, and they
                 are kept in memory for this page only (never stored).
               </p>
@@ -280,7 +281,7 @@ export default function AuditForm({
           type="submit"
           disabled={!canSubmit}
           aria-busy={loading}
-          className="flex items-center justify-center gap-2 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-zinc-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-sage-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:bg-sage-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
         >
           {loading && (
             <CircleNotch

@@ -85,10 +85,13 @@ export default function ReadabilityPanel({ report }: { report: AuditReport }) {
       className="w-full scroll-mt-24 space-y-4"
     >
       <div>
-        <h2 className="text-lg font-bold text-sage-950 dark:text-sage-50">
+        <p className="eyebrow text-sage-500 dark:text-sage-400">
+          AI readability
+        </p>
+        <h2 className="mt-1 text-lg font-bold tracking-tight text-sage-950 dark:text-sage-50">
           AI Assistant Readability
         </h2>
-        <p className="mt-0.5 text-xs text-sage-600 dark:text-sage-400">
+        <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
           What AI fetch tools extracted from the live page markup (ttl=0).
         </p>
         <p className="mt-1 text-xs tabular-nums text-sage-500 dark:text-sage-400">
@@ -98,7 +101,7 @@ export default function ReadabilityPanel({ report }: { report: AuditReport }) {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-sage-200 bg-white p-4 shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+      <div className="card p-4">
         <CompactCheckList items={readability} />
       </div>
     </section>

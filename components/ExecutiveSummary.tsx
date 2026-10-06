@@ -31,6 +31,7 @@ export default function ExecutiveSummary({
 }) {
   const grade = report.score.grade ?? gradeFor(report.score.total);
   const p0Count = report.fixes.filter((f) => f.priority === "P0").length;
+  const p1Count = report.fixes.filter((f) => f.priority === "P1").length;
   const p0 = report.fixes.filter((f) => f.priority === "P0").slice(0, 3);
   const indexed = report.search.indexation.indexed;
   const rank = report.search.ranking.rank;
@@ -38,12 +39,24 @@ export default function ExecutiveSummary({
   return (
     <section
       aria-label="Executive summary"
-      className="w-full rounded-2xl border border-sage-200 bg-white p-4 shadow-card dark:border-sage-800/80 dark:bg-[#161D17] sm:p-5"
+      className="card w-full p-4 sm:p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-sage-950 dark:text-sage-50">
-          {verdictFor(grade, p0Count)}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow text-sage-500 dark:text-sage-400">
+            Executive summary
+          </p>
+          <p className="mt-1 text-[15px] font-semibold leading-snug text-sage-950 dark:text-sage-50">
+            {verdictFor(grade, p0Count)}
+          </p>
+          <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
+            {p0Count > 0
+              ? `Start with the ${p0Count} blocking ${p0Count === 1 ? "fix" : "fixes"} — then work through ${p1Count} high-impact improvements.`
+              : p1Count > 0
+                ? `No blocking issues. ${p1Count} high-impact ${p1Count === 1 ? "improvement remains" : "improvements remain"} to earn more citations.`
+                : "No blocking or high-impact issues. Keep the page fast and structured."}
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${

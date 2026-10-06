@@ -27,7 +27,7 @@ function EvidenceSection({
   const reduce = useReducedMotion();
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-sage-200 bg-white shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+    <div className="card overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3">
         <Icon
           className="h-4 w-4 shrink-0 text-sage-500 dark:text-sage-400"

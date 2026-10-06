@@ -138,7 +138,7 @@ export function CopyButton({
       onClick={onClick}
       aria-label={done ? "Copied to clipboard" : label}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border border-sage-200 px-2.5 py-0.5 text-xs font-medium text-sage-800 transition-colors hover:bg-sage-100/70",
+        "inline-flex min-h-[28px] shrink-0 items-center gap-1 rounded-full border border-sage-200 px-2.5 py-0.5 text-xs font-medium text-sage-800 transition-colors hover:bg-sage-100/70",
         "dark:border-sage-800 dark:text-sage-200 dark:hover:bg-sage-900/80",
         className,
       )}
@@ -232,10 +232,7 @@ export function StatusGroup({
   const Icon = t.Icon;
   return (
     <div
-      className={cn(
-        "h-full rounded-card border p-4 shadow-card",
-        t.card,
-      )}
+      className={cn("card h-full p-4", t.card)}
     >
       <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", t.head)}>
         <Icon className={cn("h-4 w-4 shrink-0", t.icon)} weight="fill" aria-hidden="true" />

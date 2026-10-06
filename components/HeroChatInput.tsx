@@ -181,7 +181,7 @@ export default function HeroChatInput({
                 onChange({ query: "" });
                 setShowQueryInput(false);
               }}
-              className="text-[11px] font-medium text-sage-500 hover:text-sage-800 dark:text-sage-400 dark:hover:text-sage-200"
+              className="min-h-[28px] text-[11px] font-medium text-sage-500 hover:text-sage-800 dark:text-sage-400 dark:hover:text-sage-200"
             >
               Auto-derive
             </button>

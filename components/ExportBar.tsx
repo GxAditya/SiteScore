@@ -10,7 +10,7 @@ import { buildAuditMarkdown } from "@/lib/report-markdown";
 import { cn, copyText, useToast } from "@/lib/ui";
 
 const SECONDARY_BUTTON =
-  "border border-sage-200 text-sage-800 hover:bg-sage-100 dark:border-sage-800 dark:text-sage-200 dark:hover:bg-sage-900";
+  "border border-sage-200 bg-white/70 text-sage-800 hover:bg-sage-100 dark:border-sage-800 dark:bg-transparent dark:text-sage-200 dark:hover:bg-sage-900";
 
 export default function ExportBar({ report }: { report: AuditReport }) {
   const { toast } = useToast();
@@ -56,12 +56,12 @@ export default function ExportBar({ report }: { report: AuditReport }) {
       aria-label="Export report"
       className="no-print w-full"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sage-200/90 bg-sage-50/70 p-3.5 backdrop-blur-md dark:border-sage-800/90 dark:bg-[#161D17]/80 sm:p-4">
+      <div className="card flex flex-wrap items-center justify-between gap-3 bg-sage-50/70 p-3.5 backdrop-blur-md dark:bg-[#161D17]/80 sm:p-4">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-sage-900 dark:text-sage-100">
+          <h3 className="eyebrow text-sage-900 dark:text-sage-100">
             Export Audit Report
           </h3>
-          <p className="text-[11px] text-sage-500 dark:text-sage-400">
+          <p className="body-secondary mt-0.5 text-sage-500 dark:text-sage-400">
             Download or copy formatted findings for client reports or coding agents.
           </p>
         </div>

@@ -92,19 +92,19 @@ export default function ChatPanel({
       time: "Just now",
       chips: [
         {
-          label: "🔥 View P0 Fixes",
+          label: "View P0 fixes",
           action: () => onSelectTab("fixes"),
         },
         {
-          label: "👁️ Readability Details",
+          label: "Readability details",
           action: () => onSelectTab("readability"),
         },
         {
-          label: "🔍 Search Visibility",
+          label: "Search visibility",
           action: () => onSelectTab("visibility"),
         },
         {
-          label: "📋 Copy Repair Brief",
+          label: "Copy repair brief",
           action: async () => {
             const brief = buildFullRepairBrief(report.fixes, {
               url: targetUrl,
@@ -227,7 +227,7 @@ export default function ChatPanel({
       className="flex h-full w-full flex-col border-r border-sage-200 bg-sage-50/40 dark:border-sage-800 dark:bg-[#111712]"
     >
       {/* Chat header */}
-      <div className="flex h-13 shrink-0 items-center justify-between border-b border-sage-200/80 px-4 dark:border-sage-800/80">
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sage-200/80 px-4 dark:border-sage-800/80">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sage-500 text-white dark:bg-sage-300 dark:text-sage-950">
             <Robot className="h-4 w-4" weight="bold" />
@@ -275,13 +275,23 @@ export default function ChatPanel({
             )}
 
             <div
-              className={`max-w-[85%] rounded-2xl p-3 shadow-2xs ${
+              className={`max-w-[85%] rounded-2xl px-3 py-2.5 text-[13px] leading-relaxed shadow-2xs ${
                 m.sender === "user"
-                  ? "bg-sage-500 text-white dark:bg-sage-300 dark:text-sage-950"
-                  : "border border-sage-200 bg-white text-sage-900 dark:border-sage-800/80 dark:bg-[#161D17] dark:text-sage-100"
+                  ? "rounded-br-md bg-sage-600 text-white dark:bg-sage-300 dark:text-sage-950"
+                  : "rounded-bl-md border border-sage-200 bg-white text-sage-900 dark:border-sage-800/80 dark:bg-[#161D17] dark:text-sage-100"
               }`}
             >
-              <div className="whitespace-pre-wrap">{m.text}</div>
+              <div className="whitespace-pre-wrap">
+                {m.text.split("**").map((part, i) =>
+                  i % 2 === 1 ? (
+                    <strong key={i} className="font-semibold">
+                      {part}
+                    </strong>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  ),
+                )}
+              </div>
 
               {m.chips && m.chips.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5 border-t border-sage-100 pt-2 dark:border-sage-800">

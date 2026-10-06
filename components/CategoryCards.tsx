@@ -23,19 +23,19 @@ const CATEGORIES = [
     key: "readability",
     label: "Readability",
     hint: "Can AI tools read and extract page content cleanly?",
-    weight: "40% weight",
+    weight: "40% of score",
   },
   {
     key: "visibility",
     label: "Visibility",
     hint: "Does search surface and rank this URL in answer results?",
-    weight: "35% weight",
+    weight: "35% of score",
   },
   {
     key: "technical",
     label: "Technical",
     hint: "Fast latency, clean headers, and frictionless crawlability?",
-    weight: "25% weight",
+    weight: "25% of score",
   },
 ] as const;
 
@@ -87,9 +87,9 @@ function CategoryRow({
   ];
 
   return (
-    <div className="rounded-2xl border border-sage-200 bg-white shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+    <div className="card">
       <div className="p-4 sm:p-5">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
               {cat.label}{" "}
@@ -97,11 +97,11 @@ function CategoryRow({
                 · {cat.weight}
               </span>
             </h3>
-            <p className="mt-0.5 text-xs text-sage-600 dark:text-sage-400">
+            <p className="mt-0.5 text-xs leading-relaxed text-sage-600 dark:text-sage-400">
               {cat.hint}
             </p>
           </div>
-          <span className="shrink-0 text-xl font-bold tabular-nums text-sage-950 dark:text-sage-50">
+          <span className="shrink-0 rounded-xl bg-sage-100/80 px-2.5 py-1 text-xl font-bold tabular-nums text-sage-950 dark:bg-sage-900/70 dark:text-sage-50">
             {score}
           </span>
         </div>

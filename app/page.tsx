@@ -507,11 +507,11 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
               {PIPELINE_STEPS.map((s) => (
                 <div
                   key={s.step}
-                  className="relative rounded-2xl border border-sage-200 bg-white p-6 shadow-card transition-all hover:border-sage-400 dark:border-sage-800/80 dark:bg-[#161D17]"
+                  className="card group relative p-6 transition-colors hover:border-sage-400 dark:hover:border-sage-700"
                 >
                   <div className="flex items-center justify-between">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sage-100 text-sage-700 dark:bg-sage-900 dark:text-sage-300">
@@ -544,18 +544,18 @@ export default function Home() {
                 Why Traditional SEO Fails in the AI Era
               </h2>
               <p className="mt-2 text-xs sm:text-sm text-sage-600 dark:text-sage-400 max-w-xl mx-auto">
-                AI engines synthesize answers directly. If your page cannot be parsed quickly and cleanly, you are omitted from citation citations entirely.
+                AI engines synthesize answers directly. If your page cannot be parsed quickly and cleanly, you are omitted from citations entirely.
               </p>
             </div>
 
-            <div className="mt-10 grid gap-6 md:grid-cols-2">
+            <div className="mt-10 grid gap-4 md:grid-cols-2">
               {COMPARISON_POINTS.map((card) => (
                 <div
                   key={card.title}
-                  className={`rounded-2xl border p-6 shadow-card ${
+                  className={`card p-6 ${
                     card.accent
-                      ? "border-sage-300 bg-white ring-2 ring-sage-500/20 dark:border-sage-700 dark:bg-[#161D17]"
-                      : "border-sage-200 bg-white/70 dark:border-sage-800 dark:bg-[#161D17]/60"
+                      ? "border-sage-300 ring-2 ring-sage-500/20 dark:border-sage-700"
+                      : "card-quiet"
                   }`}
                 >
                   <div className="flex items-center gap-2">

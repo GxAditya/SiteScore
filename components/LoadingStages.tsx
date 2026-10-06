@@ -28,7 +28,7 @@ export default function LoadingStages({ stage }: { stage: number }) {
     <section
       aria-live="polite"
       aria-label="Audit progress"
-      className="w-full rounded-2xl border border-sage-200 bg-white p-5 shadow-card dark:border-sage-800/80 dark:bg-[#161D17] sm:p-6"
+      className="card w-full p-5 sm:p-6"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-sage-950 dark:text-sage-50">

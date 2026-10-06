@@ -69,7 +69,7 @@ export default function ScoreGauge({
 
   return (
     <section aria-label="Overall score" className="w-full">
-      <div className="flex w-full flex-col gap-5 rounded-2xl border border-sage-200 bg-white p-5 shadow-card dark:border-sage-800/80 dark:bg-[#161D17] sm:flex-row sm:items-center sm:gap-6 sm:p-6">
+      <div className="card p-5 sm:flex-row sm:items-center sm:gap-6 sm:p-6 flex w-full flex-col gap-5">
         <div ref={gaugeRef} className="relative mx-auto shrink-0 sm:mx-0">
           <svg
             viewBox="0 0 140 140"

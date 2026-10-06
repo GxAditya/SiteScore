@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Key, Sparkle, X } from "@phosphor-icons/react";
 import { type AuditFormValues } from "./AuditForm";
 
@@ -17,24 +18,76 @@ export default function SettingsModal({
   values,
   onChange,
 }: SettingsModalProps) {
+  const reduce = useReducedMotion();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
+    if (!open) return;
+    closeRef.current?.focus();
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && open) onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href]',
+        ),
+      ).filter((el) => el.offsetParent !== null);
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || !panel.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [open, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="settings-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-    >
-      <div className="relative w-full max-w-lg rounded-2xl border border-sage-200 bg-white p-6 shadow-2xl dark:border-sage-800 dark:bg-[#151D16]">
+    <AnimatePresence>
+      {open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+          <motion.div
+            aria-hidden="true"
+            initial={reduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduce ? undefined : { opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-sage-950/60 backdrop-blur-sm dark:bg-black/70"
+          />
+          <motion.div
+            ref={panelRef}
+            initial={reduce ? false : { opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduce ? undefined : { opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="card relative max-h-[90dvh] w-full max-w-lg overflow-y-auto p-6 shadow-lift"
+          >
         <div className="flex items-center justify-between border-b border-sage-100 pb-4 dark:border-sage-800/80">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sage-100 text-sage-700 dark:bg-sage-900/80 dark:text-sage-300">
@@ -146,16 +199,26 @@ export default function SettingsModal({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full bg-sage-500 px-5 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-sage-600 active:scale-[0.98] dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
+            className="min-h-[40px] rounded-full border border-sage-200 px-5 py-2 text-xs font-semibold text-sage-800 transition-colors hover:bg-sage-100 dark:border-sage-800 dark:text-sage-200 dark:hover:bg-sage-900"
           >
-            Save & Continue
+            Cancel
+          </button>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="min-h-[40px] rounded-full bg-sage-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition-all hover:bg-sage-700 active:scale-[0.98] dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
+          >
+            Save and continue
           </button>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

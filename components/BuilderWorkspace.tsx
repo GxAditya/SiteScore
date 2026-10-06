@@ -71,7 +71,7 @@ export default function BuilderWorkspace({
             <span className="truncate font-mono text-[11px] font-medium text-sage-800 dark:text-sage-200">
               {targetUrl}
             </span>
-            <CopyButton text={targetUrl} label="Copy target URL" className="py-0 text-[10px]" />
+            <CopyButton text={targetUrl} label="Copy target URL" className="min-h-[28px] py-0 text-[10px]" />
           </div>
 
           {targetQuery && (

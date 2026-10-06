@@ -159,10 +159,13 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       className="w-full scroll-mt-24 space-y-4"
     >
       <div>
-        <h2 className="text-lg font-bold text-sage-950 dark:text-sage-50">
+        <p className="eyebrow text-sage-500 dark:text-sage-400">
+          Search visibility
+        </p>
+        <h2 className="mt-1 text-lg font-bold tracking-tight text-sage-950 dark:text-sage-50">
           Search Visibility Probes
         </h2>
-        <p className="mt-0.5 text-xs text-sage-600 dark:text-sage-400">
+        <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
           Live indexation and ranking measured with TinyFish Search probes.
         </p>
         <p className="mt-1 text-xs tabular-nums text-sage-500 dark:text-sage-400">
@@ -172,12 +175,12 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-sage-200 bg-white p-4 shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+      <div className="card p-4">
         <CompactCheckList items={visChecks} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="h-full rounded-2xl border border-sage-200 bg-white p-4 shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+        <div className="card h-full p-4">
           <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
             Indexation Status
           </h3>
@@ -207,7 +210,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
           </p>
         </div>
 
-        <div className="h-full rounded-2xl border border-sage-200 bg-white p-4 shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+        <div className="card h-full p-4">
           <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
             Rank Position
           </h3>
@@ -237,7 +240,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       </div>
 
       {snippetCheck && (
-        <div className="rounded-2xl border border-sage-200 bg-white p-4 shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+        <div className="card p-4">
           <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
             Snippet Term Matching
           </h3>
@@ -261,14 +264,14 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       )}
 
       {ranking.results.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-sage-200 bg-white shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
-          <table className="w-full min-w-[560px] text-left text-xs sm:text-sm">
+        <div className="card overflow-x-auto">
+          <table className="table-dense w-full min-w-[560px] text-left text-xs sm:text-sm">
             <caption className="px-4 pt-3 text-left text-xs font-semibold tabular-nums text-sage-950 dark:text-sage-50">
               Ranking results for &ldquo;{report.input.query}&rdquo; — showing{" "}
               {visibleRanks.length} of {ranking.results.length}
             </caption>
-            <thead>
-              <tr className="border-b border-sage-100 text-xs text-sage-500 dark:border-sage-800 dark:text-sage-400">
+            <thead className="sticky top-0 z-10 bg-white dark:bg-[#161D17]">
+              <tr className="border-b border-sage-200 text-sage-500 dark:border-sage-800 dark:text-sage-400">
                 <th scope="col" className="px-4 py-2 font-semibold">
                   #
                 </th>
@@ -328,7 +331,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       )}
 
       {competitors.length > 0 && (
-        <div className="rounded-2xl border border-sage-200 bg-white p-4 shadow-card dark:border-sage-800/80 dark:bg-[#161D17]">
+        <div className="card p-4">
           <h3 className="text-sm font-semibold tabular-nums text-sage-950 dark:text-sage-50">
             Competitor Domains Contesting Query ({competitors.length})
           </h3>

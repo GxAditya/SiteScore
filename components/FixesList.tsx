@@ -94,7 +94,7 @@ function FixCard({
               ease: "easeOut",
             }
       }
-      className="rounded-2xl border border-sage-200 bg-white shadow-card dark:border-sage-800/80 dark:bg-[#161D17]"
+      className="card"
     >
       <div className="flex flex-wrap items-center gap-2.5 p-4 sm:p-5">
         <span
@@ -232,13 +232,16 @@ export default function FixesList({
       className="w-full scroll-mt-24 space-y-4"
     >
       <Rise>
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div>
-            <h2 className="text-lg font-bold text-sage-950 dark:text-sage-50">
+            <p className="eyebrow text-sage-500 dark:text-sage-400">
+              Action plan
+            </p>
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-sage-950 dark:text-sage-50">
               Prioritized Action Plan{" "}
               <span className="tabular-nums">({fixes.length})</span>
             </h2>
-            <p className="mt-0.5 text-xs text-sage-600 dark:text-sage-400">
+            <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
               Specific, actionable fixes with before/after code. No generic tips.
             </p>
           </div>
@@ -247,7 +250,7 @@ export default function FixesList({
 
       {fixes.length === 0 ? (
         <Rise delay={0.05}>
-          <div className="flex items-start gap-3 rounded-2xl border border-sage-200 bg-sage-50/80 p-5 shadow-card dark:border-sage-800 dark:bg-sage-950">
+          <div className="card flex items-start gap-3 bg-sage-50/80 p-5 dark:bg-sage-950">
             <CheckCircle
               className="mt-0.5 h-5 w-5 shrink-0 text-sage-500 dark:text-sage-300"
               weight="fill"

@@ -30,7 +30,7 @@ export default function FetchAlerts({ report }: { report: AuditReport }) {
       {errorChecks.map((c) => (
         <div
           key={c.id}
-          className="rounded-2xl border border-amber-300/80 bg-amber-50/70 p-4 shadow-card dark:border-amber-900/80 dark:bg-amber-950/40"
+          className="card border-amber-300/80 bg-amber-50/70 p-4 dark:border-amber-900/80 dark:bg-amber-950/40"
         >
           <div className="flex flex-wrap items-center gap-2">
             <Warning
@@ -72,7 +72,7 @@ export default function FetchAlerts({ report }: { report: AuditReport }) {
       {orphanErrors.map((e, i) => (
         <div
           key={`${e.url}-${i}`}
-          className="rounded-2xl border border-amber-300/80 bg-amber-50/70 p-4 shadow-card dark:border-amber-900/80 dark:bg-amber-950/40"
+          className="card border-amber-300/80 bg-amber-50/70 p-4 dark:border-amber-900/80 dark:bg-amber-950/40"
         >
           <div className="flex flex-wrap items-center gap-2">
             <Warning

@@ -54,12 +54,28 @@ export default function OutputPanel({
   const tabsListRef = useRef<HTMLDivElement>(null);
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    if (
+      e.key !== "ArrowRight" &&
+      e.key !== "ArrowLeft" &&
+      e.key !== "Home" &&
+      e.key !== "End"
+    )
+      return;
     e.preventDefault();
     const idx = TABS.findIndex((t) => t.id === activeTab);
-    const dir = e.key === "ArrowRight" ? 1 : -1;
-    const next = TABS[(idx + dir + TABS.length) % TABS.length];
+    let nextIndex = idx;
+    if (e.key === "ArrowRight") nextIndex = (idx + 1) % TABS.length;
+    if (e.key === "ArrowLeft") nextIndex = (idx - 1 + TABS.length) % TABS.length;
+    if (e.key === "Home") nextIndex = 0;
+    if (e.key === "End") nextIndex = TABS.length - 1;
+    const next = TABS[nextIndex];
     onSelectTab(next.id);
+    requestAnimationFrame(() => {
+      const el = tabsListRef.current?.querySelector<HTMLElement>(
+        `#tab-${next.id}`,
+      );
+      el?.focus();
+    });
   }
 
   const p0Count = report ? report.fixes.filter((f) => f.priority === "P0").length : 0;
@@ -71,13 +87,13 @@ export default function OutputPanel({
       className="flex h-full w-full flex-col bg-white dark:bg-[#0E140F]"
     >
       {/* Workspace Tabs Header (Bolt / Lovable style) */}
-      <div className="flex h-13 shrink-0 items-center justify-between border-b border-sage-200/80 bg-sage-50/50 px-4 dark:border-sage-800/80 dark:bg-[#151D16]/60">
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sage-200/80 bg-sage-50/50 px-4 dark:border-sage-800/80 dark:bg-[#151D16]/60">
         <div
           ref={tabsListRef}
           role="tablist"
           aria-label="Output Views"
           onKeyDown={handleKeyDown}
-          className="flex items-center gap-1 overflow-x-auto py-1"
+          className="no-scrollbar flex items-center gap-1 overflow-x-auto py-1"
         >
           {TABS.map((tab) => {
             const isSelected = activeTab === tab.id;
@@ -89,7 +105,7 @@ export default function OutputPanel({
                 aria-selected={isSelected}
                 tabIndex={isSelected ? 0 : -1}
                 onClick={() => onSelectTab(tab.id)}
-                className={`relative inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                className={`relative inline-flex min-h-[36px] items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                   isSelected
                     ? "bg-white text-sage-950 shadow-2xs dark:bg-[#1E271F] dark:text-sage-100"
                     : "text-sage-600 hover:bg-white/60 hover:text-sage-900 dark:text-sage-400 dark:hover:bg-sage-900/40 dark:hover:text-sage-200"
