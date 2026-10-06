@@ -9,18 +9,10 @@ import { motion, useReducedMotion } from "motion/react";
 import {
   ArrowClockwise,
   ArrowRight,
-  ArrowsLeftRight,
-  CheckCircle,
-  CloudArrowDown,
-  Faders,
-  Globe,
-  MagnifyingGlass,
-  ShieldCheck,
-  Sparkle,
-  Timer,
-  Wrench,
+  ArrowUpRight,
+  X,
 } from "@phosphor-icons/react";
-import { BrandMark, ThemeToggle } from "@/lib/ui";
+import { BrandMark, ThemeToggle, useToast } from "@/lib/ui";
 import { type AuditFormValues } from "@/components/AuditForm";
 import HeroChatInput from "@/components/HeroChatInput";
 import BuilderWorkspace from "@/components/BuilderWorkspace";
@@ -106,55 +98,94 @@ function writeHistory(next: HistoryEntry[]): void {
   historySubscribers.forEach((notify) => notify());
 }
 
-const TRUST_BADGES = [
-  { icon: MagnifyingGlass, label: "TinyFish Search · Live SERP" },
-  { icon: Globe, label: "TinyFish Fetch · Clean Markdown" },
-  { icon: Timer, label: "ttl=0 · No Stored Cache" },
-  { icon: ShieldCheck, label: "Keys Never Persisted" },
+type RowStatus = "pass" | "warn" | "fail";
+
+/* Real rows printed by SiteScore's analyzer on the live HTML of
+   tailwindcss.com, 6 Oct 2026 (HTML step; search probes excluded —
+   they run live at audit time). Values verbatim. */
+const RECEIPT_CHECKS: Array<{ id: string; status: RowStatus; evidence: string }> = [
+  {
+    id: "r-title",
+    status: "warn",
+    evidence:
+      'Title is 76 chars ("Tailwind CSS - Rapidly build modern websites without ever leaving your HTML.") — outside 50–60.',
+  },
+  {
+    id: "r-h1",
+    status: "pass",
+    evidence:
+      'Exactly 1 <h1> ("Rapidly build modern websites without ever leaving your HTML.").',
+  },
+  {
+    id: "r-canonical",
+    status: "fail",
+    evidence: "0 canonical link tags found (expected 1 absolute URL).",
+  },
+  {
+    id: "r-img-alt",
+    status: "fail",
+    evidence: "15/40 <img> tags have non-empty alt (38% coverage; pass ≥90%).",
+  },
+  {
+    id: "r-schema",
+    status: "fail",
+    evidence: '0 valid JSON-LD blocks out of 0 script[type="application/ld+json"] tags (expected ≥1).',
+  },
+  {
+    id: "r-og-tags",
+    status: "pass",
+    evidence: "3/3 OG tags present (og:title, og:description, og:image).",
+  },
+  {
+    id: "r-word-count",
+    status: "pass",
+    evidence: "49,109 words in the live HTML (pass ≥600, fail <300).",
+  },
 ];
 
-const PIPELINE_STEPS = [
+const RECEIPT_FIXES: Array<{ priority: "P1"; title: string; why: string }> = [
   {
-    step: "01",
-    icon: CloudArrowDown,
-    title: "Live Fetch (ttl=0)",
-    desc: "We extract raw HTML and AI-optimized Markdown exactly as modern search bots and LLM agents parse your page.",
+    priority: "P1",
+    title: "Rewrite <title> (76 chars → ≤60)",
+    why: 'Measured title is 76 chars ("Tailwind CSS - Rapidly build modern websites without ever leaving"), outside the 50–60 display band, so search rewrites it and AI citations quote an unpredictable string.',
   },
   {
-    step: "02",
-    icon: MagnifyingGlass,
-    title: "Search Visibility Probe",
-    desc: "We probe TinyFish Search to verify site: indexation and natural query ranking against top competing URLs.",
+    priority: "P1",
+    title: "Label 25 unlabeled images (38% alt coverage)",
+    why: "Measured 15/40 <img> tags with non-empty alt (38% coverage; pass ≥90%): text-only AI fetchers skip the other 25 images entirely.",
   },
   {
-    step: "03",
-    icon: Wrench,
-    title: "Actionable AI Code Fixes",
-    desc: "Get an overall 0–100 score with concrete P0 blocking fixes and copy-paste prompts for Cursor, Claude, or ChatGPT.",
+    priority: "P1",
+    title: "Add JSON-LD structured data (0 valid blocks today)",
+    why: "Measured 0 valid JSON-LD blocks on a 49,109-word page: answer engines get prose only and cite structured competitors first.",
   },
 ];
 
-const COMPARISON_POINTS = [
+const READERS_ROWS = [
   {
-    title: "Traditional Search (Google)",
-    points: [
-      "Indexes static HTML and rendered JavaScript DOM",
-      "Relies heavily on backlink authority & anchor text",
-      "Displays 10 blue links with meta snippet",
-      "Tolerates slower page loads and deep client navigation",
-    ],
+    aspect: "What it loads",
+    browser: "The full styled page — layout, scripts, images.",
+    ai: "Text extraction only, fetched live and never cached.",
   },
   {
-    title: "AI Search (Perplexity, SearchGPT, Gemini)",
-    accent: true,
-    points: [
-      "Extracts direct answers, headings hierarchy & semantic entities",
-      "Requires immediate text readability without script blocking",
-      "Synthesizes answers and cites only readable, authoritative sources",
-      "Discards pages that timeout, require login, or lack Schema.org metadata",
-    ],
+    aspect: "What earns a citation",
+    browser: "Backlinks and snippet match.",
+    ai: "Clear headings, entities, schema — and being indexed at all.",
+  },
+  {
+    aspect: "What sinks a page",
+    browser: "Slow loads still rank.",
+    ai: "Timeout, login wall, noindex, empty extraction. Omitted entirely.",
   },
 ];
+
+function statusPill(status: RowStatus): string {
+  if (status === "pass")
+    return "bg-sage-100 text-sage-800 dark:bg-sage-900/70 dark:text-sage-200";
+  if (status === "warn")
+    return "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200";
+  return "bg-coral-50 text-coral-800 dark:bg-coral-950/60 dark:text-coral-200";
+}
 
 export default function Home() {
   const [values, setValues] = useState<AuditFormValues>(INITIAL_VALUES);
@@ -174,6 +205,27 @@ export default function Home() {
 
   const stageTimers = useRef<number[]>([]);
   const reduceMotion = useReducedMotion();
+  const { toast } = useToast();
+
+  function focusAfterRunsChange(fallbackId: string) {
+    requestAnimationFrame(() => {
+      if (document.activeElement === document.body) {
+        document.getElementById(fallbackId)?.focus({ preventScroll: true });
+      }
+    });
+  }
+
+  function removeHistoryEntry(url: string) {
+    writeHistory(history.filter((e) => e.url !== url));
+    toast("Removed from recent runs");
+    focusAfterRunsChange(history.length > 1 ? "runs-title" : "hero-url");
+  }
+
+  function clearHistory() {
+    writeHistory([]);
+    toast("Cleared recent runs");
+    focusAfterRunsChange("hero-url");
+  }
 
   function clearStageTimers() {
     for (const t of stageTimers.current) window.clearTimeout(t);
@@ -276,7 +328,6 @@ export default function Home() {
     }
   }
 
-  // If in workspace mode (auditing or viewing results), show the 2-panel AI Studio interface!
   if (isWorkspaceOpen) {
     return (
       <>
@@ -305,44 +356,38 @@ export default function Home() {
     );
   }
 
-  // Otherwise, render the modern AI Builder Landing Page (Lovable / Bolt / Google AI Studio style)
   return (
-    <div className="flex min-h-dvh flex-col bg-[#F8FAF7] text-sage-950 dark:bg-[#0E140F] dark:text-sage-50">
-      {/* Landing Header */}
-      <header className="sticky top-0 z-40 border-b border-sage-200/80 bg-white/80 backdrop-blur-md dark:border-sage-800/80 dark:bg-[#0E140F]/85">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <BrandMark size={32} />
-            <div className="flex flex-col">
-              <span className="text-base font-bold tracking-tight text-sage-950 dark:text-sage-50">
-                SiteScore
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-sage-500 dark:text-sage-400">
-                AI Search Auditor
-              </span>
-            </div>
+    <div className="flex min-h-dvh flex-col bg-[var(--surface)] text-[var(--text)]">
+      <header className="sticky top-0 z-40 border-b border-sage-700/20 bg-[var(--surface)]/90 backdrop-blur-md dark:border-sage-300/15">
+        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <BrandMark size={30} />
+            <span className="font-display text-[17px] font-bold tracking-tight">
+              SiteScore
+            </span>
           </div>
 
-          <nav className="hidden items-center gap-1.5 md:flex" aria-label="Main Navigation">
+          <nav className="hidden items-center gap-6 md:flex" aria-label="Main Navigation">
             <a
-              href="#how-it-works"
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100 hover:text-sage-950 dark:text-sage-300 dark:hover:bg-sage-900 dark:hover:text-sage-100"
+              href="#receipt"
+              className="text-[13px] font-semibold text-sage-700 underline-offset-4 hover:text-sage-950 hover:underline dark:text-sage-300 dark:hover:text-sage-50"
             >
-              How It Works
+              Receipt
             </a>
             <a
-              href="#ai-vs-traditional"
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100 hover:text-sage-950 dark:text-sage-300 dark:hover:bg-sage-900 dark:hover:text-sage-100"
+              href="#readers"
+              className="text-[13px] font-semibold text-sage-700 underline-offset-4 hover:text-sage-950 hover:underline dark:text-sage-300 dark:hover:text-sage-50"
             >
-              AI vs Traditional SEO
+              Two readers
             </a>
             <a
               href={DOCS_URL}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100 hover:text-sage-950 dark:text-sage-300 dark:hover:bg-sage-900 dark:hover:text-sage-100"
+              className="inline-flex items-center gap-1 text-[13px] font-semibold text-sage-700 underline-offset-4 hover:text-sage-950 hover:underline dark:text-sage-300 dark:hover:text-sage-50"
             >
-              TinyFish API Docs
+              TinyFish docs
+              <ArrowUpRight className="h-3 w-3" weight="bold" />
             </a>
           </nav>
 
@@ -351,21 +396,19 @@ export default function Home() {
               type="button"
               onClick={() => setSettingsOpen(true)}
               aria-label="Settings and API keys"
-              title="API Keys (BYOK)"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-sage-200/80 bg-white/70 text-sage-700 transition-colors hover:bg-sage-100 dark:border-sage-800 dark:bg-sage-950/70 dark:text-sage-300 dark:hover:bg-sage-900"
+              title="API keys (BYOK)"
+              className="inline-flex h-9 items-center rounded-full border border-sage-700/25 px-3.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100 dark:border-sage-300/20 dark:text-sage-300 dark:hover:bg-sage-900"
             >
-              <Faders className="h-4 w-4" weight="bold" />
+              API keys
             </button>
-
             <ThemeToggle />
-
             {report && (
               <button
                 type="button"
                 onClick={() => setIsWorkspaceOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-sage-500 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition-transform hover:bg-sage-600 active:scale-[0.98] dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
+                className="inline-flex items-center gap-1.5 rounded-full bg-sage-600 px-4 py-2 text-xs font-bold text-white transition-transform hover:bg-sage-700 active:scale-[0.98] dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
               >
-                <span>View Current Audit</span>
+                Open report
                 <ArrowRight className="h-3 w-3" weight="bold" />
               </button>
             )}
@@ -373,101 +416,57 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Landing Page Content */}
       <main className="flex-1">
-        {/* Hero Section with Lovable/Bolt style AI Prompt Box in the center */}
-        <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24">
-          {/* Subtle decorative background gradient matching palette */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center opacity-40 dark:opacity-20"
+        <section aria-labelledby="hero-title" className="mx-auto w-full max-w-3xl px-4 pt-16 sm:px-6 sm:pt-24">
+          <h1
+            id="hero-title"
+            className="font-display max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl"
+            style={{ letterSpacing: "-0.025em" }}
           >
-            <div className="h-[480px] w-[640px] rounded-full bg-gradient-to-tr from-sage-200 to-sage-100 blur-3xl dark:from-sage-900 dark:to-sage-800" />
+            See your website the way AI search reads it.
+          </h1>
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-sage-700 sm:text-lg dark:text-sage-300">
+            SiteScore fetches what AI tools fetch and searches what they cite —
+            then hands you a receipt with same-day fixes, every line measured.
+          </p>
+
+          <div id="audit" className="mt-9 scroll-mt-24">
+            <HeroChatInput
+              values={values}
+              onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+              onSubmit={(urlOverride) => runAudit(urlOverride)}
+              onOpenSettings={() => setSettingsOpen(true)}
+              loading={status === "loading"}
+            />
           </div>
 
-          <div className="mx-auto flex w-full max-w-4xl flex-col items-center px-4 text-center sm:px-6">
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-col items-center"
-            >
-              <span className="inline-flex items-center gap-2 rounded-full border border-sage-300/80 bg-sage-100/70 px-3.5 py-1 text-xs font-bold text-sage-800 dark:border-sage-800 dark:bg-sage-900/60 dark:text-sage-200">
-                <Sparkle className="h-3.5 w-3.5 text-coral-500" weight="fill" />
-                Next-Gen SEO Audit for AI Search Engines
-              </span>
-
-              <h1 className="mt-4 max-w-2xl text-3xl font-extrabold tracking-tight text-sage-950 dark:text-sage-50 sm:text-5xl sm:leading-tight">
-                See your website the way{" "}
-                <span className="text-sage-500 dark:text-sage-300 underline decoration-sage-300 dark:decoration-sage-700 decoration-wavy">
-                  AI Search
-                </span>{" "}
-                reads it.
-              </h1>
-
-              <p className="mt-3.5 max-w-xl text-sm text-sage-700 dark:text-sage-300 sm:text-base leading-relaxed">
-                Perplexity, SearchGPT, and AI assistants extract content differently than legacy crawlers. We probe live fetch readability and search indexation to uncover why you get cited or missed.
-              </p>
-            </motion.div>
-
-            {/* Central Chat / Prompt Interface (Lovable / Bolt / AI Studio style) */}
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="mt-8 w-full flex flex-col items-center"
-            >
-              <HeroChatInput
-                values={values}
-                onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
-                onSubmit={(urlOverride) => runAudit(urlOverride)}
-                onOpenSettings={() => setSettingsOpen(true)}
-                loading={status === "loading"}
-              />
-            </motion.div>
-          </div>
+          <p className="mt-4 font-mono text-[11px] tracking-wide text-sage-600 dark:text-sage-400">
+            Live probes · ttl 0 · no stored cache · keys never stored
+          </p>
         </section>
 
-        {/* Real-time Guarantees Strip */}
-        <section className="border-y border-sage-200/80 bg-white/50 py-3 dark:border-sage-800/80 dark:bg-[#151D16]/50">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-4 sm:px-6">
-            {TRUST_BADGES.map((b) => (
-              <div
-                key={b.label}
-                className="flex items-center gap-2 text-xs font-semibold text-sage-600 dark:text-sage-300"
-              >
-                <b.icon className="h-4 w-4 text-sage-500 dark:text-sage-300" weight="bold" />
-                <span>{b.label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Recent Audits History (if present) */}
         {history.length > 0 && (
-          <section className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
-            <div className="flex items-center justify-between pb-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-sage-700 dark:text-sage-300">
-                Recent Audits
+          <section aria-labelledby="runs-title" className="mx-auto w-full max-w-3xl px-4 pt-12 sm:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="runs-title" tabIndex={-1} className="font-mono text-[11px] font-semibold tracking-[0.14em] text-sage-600 uppercase focus:outline-none dark:text-sage-400">
+                Your recent runs
               </h2>
-              <span className="text-[11px] text-sage-500">Stored in browser memory</span>
+              <button
+                type="button"
+                onClick={clearHistory}
+                className="font-mono text-[11px] font-semibold tracking-[0.12em] text-sage-600 uppercase underline-offset-4 hover:text-sage-950 hover:underline dark:text-sage-400 dark:hover:text-sage-50"
+              >
+                Clear
+              </button>
             </div>
-
-            <div className="grid gap-2">
+            <ol className="mt-3 divide-y divide-sage-700/15 rounded-2xl border border-sage-700/20 dark:divide-sage-300/10 dark:border-sage-300/15">
               {history.map((h) => (
-                <div
-                  key={`${h.url}-${h.date}`}
-                  className="flex items-center justify-between rounded-xl border border-sage-200 bg-white p-3 shadow-2xs transition-all hover:border-sage-400 dark:border-sage-800 dark:bg-[#161D17]"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sage-100 text-xs font-bold text-sage-800 dark:bg-sage-900/60 dark:text-sage-200">
-                      {h.score}
-                    </span>
-                    <div className="truncate">
-                      <p className="truncate text-xs font-medium text-sage-950 dark:text-sage-50">
-                        {h.url}
-                      </p>
-                      <p className="text-[10px] text-sage-500">
+                <li key={`${h.url}-${h.date}`} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="flex min-w-0 items-baseline gap-3">
+                    <span className="font-mono text-sm font-bold tabular-nums">{h.score}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium">{h.url}</p>
+                      <p className="font-mono text-[10px] tracking-wide text-sage-500 uppercase">
                         {new Date(h.date).toLocaleDateString(undefined, {
                           month: "short",
                           day: "numeric",
@@ -477,148 +476,171 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => runAudit(h.url)}
-                    className="inline-flex items-center gap-1 rounded-full border border-sage-200 px-3 py-1 text-xs font-semibold text-sage-800 hover:bg-sage-100 hover:text-sage-950 dark:border-sage-700 dark:text-sage-200 dark:hover:bg-sage-800"
-                  >
-                    <ArrowClockwise className="h-3 w-3" weight="bold" />
-                    Re-audit
-                  </button>
-                </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => runAudit(h.url)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-sage-700/25 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-sage-100 dark:border-sage-300/20 dark:hover:bg-sage-900"
+                    >
+                      <ArrowClockwise className="h-3 w-3" weight="bold" />
+                      Re-run
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeHistoryEntry(h.url)}
+                      aria-label={`Remove ${h.url} from recent runs`}
+                      title="Remove from recent runs"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-sage-500 transition-colors hover:bg-sage-100 hover:text-sage-950 dark:text-sage-400 dark:hover:bg-sage-900 dark:hover:text-sage-50"
+                    >
+                      <X className="h-3.5 w-3.5" weight="bold" />
+                    </button>
+                  </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </section>
         )}
 
-        {/* 3-Step Live Pipeline */}
-        <section id="how-it-works" className="py-16 sm:py-20">
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-            <div className="text-center">
-              <span className="text-xs font-bold uppercase tracking-widest text-sage-500 dark:text-sage-400">
-                Audit Pipeline
-              </span>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-sage-950 dark:text-sage-50 sm:text-3xl">
-                From Raw URL to Actionable Fixes
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-sage-600 dark:text-sage-400 max-w-lg mx-auto">
-                No simulated synthetic metrics. Every score derives directly from live network requests and search results.
-              </p>
-            </div>
+        <section id="receipt" aria-labelledby="receipt-title" className="mx-auto w-full max-w-3xl scroll-mt-24 px-4 pt-20 sm:px-6 sm:pt-28">
+          <h2 id="receipt-title" className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+            A run receipt, printed just now.
+          </h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-sage-700 dark:text-sage-300">
+            No sample data, no mockups. These rows were printed by SiteScore&apos;s
+            analyzer on the live HTML of tailwindcss.com — the same code path a
+            real audit runs.
+          </p>
 
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
-              {PIPELINE_STEPS.map((s) => (
-                <div
-                  key={s.step}
-                  className="card group relative p-6 transition-colors hover:border-sage-400 dark:hover:border-sage-700"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sage-100 text-sage-700 dark:bg-sage-900 dark:text-sage-300">
-                      <s.icon className="h-5 w-5" weight="duotone" />
-                    </span>
-                    <span className="font-mono text-xs font-bold text-sage-400">
-                      {s.step}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-base font-bold text-sage-950 dark:text-sage-50">
-                    {s.title}
-                  </h3>
-                  <p className="mt-2 text-xs sm:text-sm leading-relaxed text-sage-600 dark:text-sage-300">
-                    {s.desc}
+          <motion.ol
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-8 overflow-hidden rounded-2xl border border-sage-700/20 bg-white dark:border-sage-300/15 dark:bg-[#151D16]"
+          >
+            {RECEIPT_CHECKS.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-start gap-3 border-b border-sage-700/10 px-4 py-3.5 last:border-b-0 sm:px-5 dark:border-sage-300/10"
+              >
+                <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tracking-[0.1em] uppercase ${statusPill(c.status)}`}>
+                  {c.status}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-mono text-xs font-semibold">{c.id}</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-sage-700 dark:text-sage-300">
+                    {c.evidence}
                   </p>
                 </div>
-              ))}
-            </div>
+              </li>
+            ))}
+          </motion.ol>
+
+          <div className="mt-6 space-y-4">
+            {RECEIPT_FIXES.map((f) => (
+              <div key={f.title}>
+                <p className="flex flex-wrap items-center gap-2 text-[15px] font-bold">
+                  {f.title}
+                  <span className="rounded-full border border-sage-700/30 px-2 py-0.5 font-mono text-[10px] font-bold tracking-[0.1em] text-sage-800 uppercase dark:border-sage-300/25 dark:text-sage-200">
+                    {f.priority}
+                  </span>
+                </p>
+                <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-sage-700 dark:text-sage-300">
+                  {f.why}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-8 border-t border-sage-700/15 pt-4 font-mono text-[11px] leading-relaxed tracking-wide text-sage-600 dark:border-sage-300/10 dark:text-sage-400">
+            Printed 6 Oct 2026 · tailwindcss.com · HTML step — the full audit adds
+            AI Markdown extraction and search probes, then scores 0–100.
+          </p>
+          <button
+            type="button"
+            onClick={() => document.getElementById("audit")?.querySelector("input")?.focus()}
+            className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-sage-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-sage-700 active:scale-[0.98] dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
+          >
+            Print mine
+            <ArrowRight className="h-4 w-4" weight="bold" />
+          </button>
+        </section>
+
+        <section id="readers" aria-labelledby="readers-title" className="mx-auto w-full max-w-3xl scroll-mt-24 px-4 pt-20 sm:px-6 sm:pt-28">
+          <h2 id="readers-title" className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+            Two readers. Only one cites you.
+          </h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-sage-700 dark:text-sage-300">
+            Browsers paint. Assistants extract. The second reader decides whether
+            your page appears in an answer at all.
+          </p>
+
+          <div className="mt-8 overflow-x-auto rounded-2xl border border-sage-700/20 bg-white dark:border-sage-300/15 dark:bg-[#151D16]">
+            <table className="w-full min-w-[560px] border-collapse text-left">
+              <caption className="sr-only">How browsers and AI readers treat the same page</caption>
+              <thead>
+                <tr className="border-b border-sage-700/15 font-mono text-[11px] tracking-[0.12em] uppercase dark:border-sage-300/10">
+                  <th scope="col" className="px-5 py-3 font-semibold text-sage-600 dark:text-sage-400"> </th>
+                  <th scope="col" className="px-5 py-3 font-semibold text-sage-600 dark:text-sage-400">Browser</th>
+                  <th scope="col" className="px-5 py-3 font-semibold text-sage-950 dark:text-sage-50">AI reader</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-sage-700/10 dark:divide-sage-300/10">
+                {READERS_ROWS.map((r) => (
+                  <tr key={r.aspect}>
+                    <th scope="row" className="px-5 py-4 align-top font-mono text-xs font-semibold tracking-wide whitespace-nowrap uppercase">
+                      {r.aspect}
+                    </th>
+                    <td className="px-5 py-4 align-top text-sm text-sage-700 dark:text-sage-300">{r.browser}</td>
+                    <td className="px-5 py-4 align-top text-sm font-medium">{r.ai}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
-        {/* AI Search vs Traditional Search Explanation */}
-        <section id="ai-vs-traditional" className="border-t border-sage-200/80 bg-sage-50/50 py-16 dark:border-sage-800/80 dark:bg-[#121813]/60 sm:py-20">
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-            <div className="text-center">
-              <span className="text-xs font-bold uppercase tracking-widest text-sage-500 dark:text-sage-400">
-                The Shift in Search
-              </span>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-sage-950 dark:text-sage-50 sm:text-3xl">
-                Why Traditional SEO Fails in the AI Era
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-sage-600 dark:text-sage-400 max-w-xl mx-auto">
-                AI engines synthesize answers directly. If your page cannot be parsed quickly and cleanly, you are omitted from citations entirely.
-              </p>
-            </div>
-
-            <div className="mt-10 grid gap-4 md:grid-cols-2">
-              {COMPARISON_POINTS.map((card) => (
-                <div
-                  key={card.title}
-                  className={`card p-6 ${
-                    card.accent
-                      ? "border-sage-300 ring-2 ring-sage-500/20 dark:border-sage-700"
-                      : "card-quiet"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {card.accent ? (
-                      <Sparkle className="h-5 w-5 text-coral-500" weight="fill" />
-                    ) : (
-                      <ArrowsLeftRight className="h-5 w-5 text-sage-500" weight="bold" />
-                    )}
-                    <h3 className="text-base font-bold text-sage-950 dark:text-sage-50">
-                      {card.title}
-                    </h3>
-                  </div>
-
-                  <ul className="mt-5 space-y-3">
-                    {card.points.map((pt) => (
-                      <li key={pt} className="flex items-start gap-2.5 text-xs sm:text-sm">
-                        <CheckCircle
-                          className={`mt-0.5 h-4 w-4 shrink-0 ${
-                            card.accent
-                              ? "text-coral-500"
-                              : "text-sage-400 dark:text-sage-600"
-                          }`}
-                          weight="fill"
-                        />
-                        <span className="text-sage-800 dark:text-sage-200">
-                          {pt}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+        <section aria-labelledby="close-title" className="mx-auto w-full max-w-3xl px-4 pt-20 pb-20 sm:px-6 sm:pt-28 sm:pb-28">
+          <h2 id="close-title" className="font-display max-w-xl text-3xl font-bold tracking-tight text-balance sm:text-5xl">
+            Run your URL. Get the receipt.
+          </h2>
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-sage-700 sm:text-base dark:text-sage-300">
+            One paste, live probes, a 0–100 score with P0 fixes first. Free within
+            TinyFish limits — Search 30/min, Fetch 150 URLs/min.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <a
+              href="#audit"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-sage-600 px-7 py-2.5 text-sm font-bold text-white transition-all hover:bg-sage-700 active:scale-[0.98] dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
+            >
+              Start an audit
+              <ArrowRight className="h-4 w-4" weight="bold" />
+            </a>
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-sage-700/25 px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-sage-100 dark:border-sage-300/20 dark:hover:bg-sage-900"
+            >
+              TinyFish docs
+              <ArrowUpRight className="h-3.5 w-3.5" weight="bold" />
+            </a>
           </div>
         </section>
       </main>
 
-      {/* Landing Footer */}
-      <footer className="border-t border-sage-200/80 bg-white py-8 dark:border-sage-800/80 dark:bg-[#0E140F]">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
+      <footer className="border-t border-sage-700/15 py-8 dark:border-sage-300/10">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-between gap-3 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
-            <BrandMark size={24} />
-            <span className="text-xs font-semibold text-sage-900 dark:text-sage-100">
-              SiteScore · AI SEO Page Auditor
-            </span>
+            <BrandMark size={22} />
+            <span className="text-[13px] font-bold">SiteScore</span>
           </div>
-
-          <p className="text-center text-[11px] text-sage-500 dark:text-sage-400">
-            Powered by TinyFish Search & Fetch APIs. Free-tier limits: Search 30 req/min, Fetch 150 URLs/min.
+          <p className="font-mono text-[11px] tracking-wide text-sage-600 dark:text-sage-400">
+            TinyFish Search + Fetch · ttl 0 · keys never stored
           </p>
-
-          <a
-            href={DOCS_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs font-semibold text-sage-700 underline hover:text-sage-950 dark:text-sage-300 dark:hover:text-sage-100"
-          >
-            Documentation →
-          </a>
         </div>
       </footer>
 
-      {/* Settings Modal */}
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

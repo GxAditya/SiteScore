@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter_Tight } from "next/font/google";
+import { Inter_Tight, JetBrains_Mono, Libre_Franklin } from "next/font/google";
 import { ToastProvider } from "@/lib/ui";
 import "./globals.css";
 
@@ -7,6 +7,20 @@ const sans = Inter_Tight({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
+});
+
+const display = Libre_Franklin({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: ["700", "800"],
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 const SITE_NAME = "SiteScore";
@@ -41,7 +55,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${sans.variable} min-h-dvh bg-[var(--surface)] font-sans text-[var(--text)] antialiased`}
+        className={`${sans.variable} ${display.variable} ${mono.variable} min-h-dvh bg-[var(--surface)] font-sans text-[var(--text)] antialiased`}
       >
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <a
