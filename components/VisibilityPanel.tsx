@@ -265,20 +265,25 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
 
       {ranking.results.length > 0 && (
         <div className="card overflow-x-auto">
-          <table className="table-dense w-full min-w-[560px] text-left text-xs sm:text-sm">
+          <table className="table-dense w-full min-w-[720px] table-fixed text-left text-xs sm:text-sm">
+            <colgroup>
+              <col className="w-12" />
+              <col className="w-[38%]" />
+              <col className="w-[54%]" />
+            </colgroup>
             <caption className="px-4 pt-3 text-left text-xs font-semibold tabular-nums text-sage-950 dark:text-sage-50">
               Ranking results for &ldquo;{report.input.query}&rdquo; — showing{" "}
               {visibleRanks.length} of {ranking.results.length}
             </caption>
             <thead className="sticky top-0 z-10 bg-white dark:bg-[#161D17]">
               <tr className="border-b border-sage-200 text-sage-500 dark:border-sage-800 dark:text-sage-400">
-                <th scope="col" className="px-4 py-2 font-semibold">
+                <th scope="col" className="px-4 py-2 align-top font-semibold">
                   #
                 </th>
-                <th scope="col" className="px-4 py-2 font-semibold">
+                <th scope="col" className="px-4 py-2 align-top font-semibold">
                   Page
                 </th>
-                <th scope="col" className="px-4 py-2 font-semibold">
+                <th scope="col" className="px-4 py-2 align-top font-semibold">
                   Snippet
                 </th>
               </tr>
@@ -289,24 +294,26 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
                   key={`${r.url}-${i}`}
                   className="border-b border-sage-100/70 transition-colors last:border-0 hover:bg-sage-50/50 dark:border-sage-800 dark:hover:bg-sage-900/40"
                 >
-                  <td className="px-4 py-2.5 font-mono text-xs tabular-nums text-sage-500 dark:text-sage-400">
+                  <td className="px-4 py-2.5 align-top font-mono text-xs tabular-nums text-sage-500 dark:text-sage-400">
                     {r.position ?? "—"}
                   </td>
-                  <td className="px-4 py-2.5">
-                    <a
-                      href={r.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-sage-950 underline decoration-sage-300 underline-offset-2 hover:decoration-sage-950 dark:text-sage-50 dark:decoration-sage-700 dark:hover:decoration-sage-200"
-                    >
-                      <Highlighted text={r.title || r.url} terms={terms} />
-                    </a>
-                    <span className="block truncate font-mono text-[11px] text-sage-500 dark:text-sage-400">
-                      {r.siteName ? `${r.siteName} · ` : ""}
-                      {r.url}
-                    </span>
+                  <td className="px-4 py-2.5 align-top">
+                    <div className="min-w-0 space-y-0.5">
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-medium leading-snug text-sage-950 underline decoration-sage-300 underline-offset-2 hover:decoration-sage-950 dark:text-sage-50 dark:decoration-sage-700 dark:hover:decoration-sage-200"
+                      >
+                        <Highlighted text={r.title || r.url} terms={terms} />
+                      </a>
+                      <span className="block truncate font-mono text-[11px] text-sage-500 dark:text-sage-400">
+                        {r.siteName ? `${r.siteName} · ` : ""}
+                        {r.url}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-sage-700 dark:text-sage-300">
+                  <td className="px-4 py-2.5 align-top text-xs leading-relaxed text-sage-700 dark:text-sage-300">
                     <Highlighted text={r.snippet} terms={terms} />
                   </td>
                 </tr>
@@ -339,23 +346,27 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
             {visibleCompetitors.map((c, i) => (
               <li
                 key={`${c.url}-${i}`}
-                className="text-xs sm:text-sm text-sage-800 dark:text-sage-200"
+                className="min-w-0 text-xs sm:text-sm text-sage-800 dark:text-sage-200"
               >
-                <span className="mr-2 font-mono text-xs tabular-nums text-sage-500 dark:text-sage-400">
-                  #{c.position ?? "—"}
-                </span>
-                <a
-                  href={c.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-sage-950 underline decoration-sage-300 underline-offset-2 hover:decoration-sage-950 dark:text-sage-50 dark:decoration-sage-700 dark:hover:decoration-sage-200"
-                >
-                  {c.title || c.url}
-                </a>
-                <span className="block truncate pl-7 font-mono text-[11px] text-sage-500 dark:text-sage-400">
-                  {c.siteName ? `${c.siteName} · ` : ""}
-                  {c.url}
-                </span>
+                <div className="min-w-0 space-y-0.5 overflow-hidden">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span className="shrink-0 font-mono text-xs tabular-nums text-sage-500 dark:text-sage-400">
+                      #{c.position ?? "—"}
+                    </span>
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="min-w-0 flex-1 font-medium leading-snug text-sage-950 underline decoration-sage-300 underline-offset-2 hover:decoration-sage-950 dark:text-sage-50 dark:decoration-sage-700 dark:hover:decoration-sage-200"
+                    >
+                      {c.title || c.url}
+                    </a>
+                  </div>
+                  <span className="block truncate font-mono text-[11px] text-sage-500 dark:text-sage-400">
+                    {c.siteName ? `${c.siteName} · ` : ""}
+                    {c.url}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>

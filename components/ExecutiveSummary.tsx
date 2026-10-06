@@ -84,13 +84,15 @@ export default function ExecutiveSummary({
                 <button
                   type="button"
                   onClick={onJumpToFixes}
-                  className="flex w-full items-center gap-2 truncate rounded-xl border border-sage-100 bg-sage-50/60 px-3 py-2 text-left text-xs text-sage-800 transition-colors hover:border-coral-300 hover:bg-coral-50/50 hover:text-coral-950 dark:border-sage-800 dark:bg-[#111712] dark:text-sage-200 dark:hover:border-coral-800 dark:hover:bg-coral-950/40"
+                  className="flex w-full min-w-0 items-center gap-2 rounded-xl border border-sage-100 bg-sage-50/60 px-3 py-2 text-left text-xs text-sage-800 transition-colors hover:border-coral-300 hover:bg-coral-50/50 hover:text-coral-950 dark:border-sage-800 dark:bg-[#111712] dark:text-sage-200 dark:hover:border-coral-800 dark:hover:bg-coral-950/40"
                 >
                   <span className="shrink-0 rounded-md bg-coral-500 px-1.5 py-0.5 font-bold text-white text-[10px]">
                     P0
                   </span>
-                  <span className="truncate font-medium">{f.title}</span>
-                  <span className="ml-auto text-[11px] text-sage-500 hover:underline">
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {f.title}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-sage-500 hover:underline">
                     View fix →
                   </span>
                 </button>

@@ -159,7 +159,7 @@ export default function ErrorPanel({ failure, onRetry }: ErrorPanelProps) {
         <span className="font-semibold">Next action: </span>
         {action.next}
       </p>
-      <p className="mt-2 font-mono text-[11px] text-coral-700 dark:text-coral-400">
+      <p className="mt-2 min-w-0 break-words font-mono text-[11px] text-coral-700 dark:text-coral-400">
         code: {failure.code} · HTTP {failure.status}
         {failure.retryable ? " · retryable" : ""}
       </p>

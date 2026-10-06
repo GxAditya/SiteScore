@@ -50,7 +50,7 @@ export default function FetchAlerts({ report }: { report: AuditReport }) {
           </p>
           {c.evidence && (
             <p
-              className="mt-1 truncate font-mono text-xs text-amber-800 dark:text-amber-300"
+              className="mt-1 min-w-0 break-words font-mono text-xs text-amber-800 dark:text-amber-300"
               title={c.evidence}
             >
               {c.evidence}
@@ -84,7 +84,7 @@ export default function FetchAlerts({ report }: { report: AuditReport }) {
               Fetch reported an error
             </h3>
           </div>
-          <p className="mt-1 font-mono text-xs text-amber-800 dark:text-amber-300">
+          <p className="mt-1 min-w-0 break-words font-mono text-xs text-amber-800 dark:text-amber-300">
             {e.url}: {e.error}
           </p>
           <p className="mt-2 flex gap-1.5 text-sm text-amber-950 dark:text-amber-100">
