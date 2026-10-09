@@ -78,7 +78,7 @@ export function buildConnection(input: ConnectionInput): Connection {
     `Because the fetch yields ${facts.wordCount} words with ${facts.h1Count === 1 ? "a single H1" : `${facts.h1Count} H1s`} and ` +
     `${facts.metaDescription ? `a ${facts.metaDescriptionLength}-char meta description` : "no meta description"}, ${snippetNote}. ` +
     `That readability profile converts directly into the visibility outcome: the page ${rankState} for "${clip(q, 60)}"${competitorNote}. ` +
-    `Fix the extraction side first — ${schemaNote} — and re-probe ranking, since ${facts.wordCount < 300 ? `${facts.wordCount} words cannot out-cite longer pages` : `every added structured fact raises citation odds without new backlinks`}.`;
+    `Fix the extraction side first - ${schemaNote} - and re-probe ranking, since ${facts.wordCount < 300 ? `${facts.wordCount} words cannot out-cite longer pages` : `every added structured fact raises citation odds without new backlinks`}.`;
 
   return { summary, correlation };
 }

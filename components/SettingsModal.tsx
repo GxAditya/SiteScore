@@ -130,7 +130,7 @@ export default function SettingsModal({
               placeholder="Uses server TINYFISH_API_KEY when empty"
               value={values.tinyfishKey}
               onChange={(e) => onChange({ tinyfishKey: e.target.value })}
-              className="w-full rounded-xl border border-sage-200 bg-sage-50/50 px-3.5 py-2.5 text-sm text-sage-950 placeholder:text-sage-400 outline-none transition-all focus:border-sage-500 focus:bg-white focus:ring-2 focus:ring-sage-500/20 dark:border-sage-800 dark:bg-[#1b251d] dark:text-sage-50 dark:focus:border-sage-400 dark:focus:bg-[#1b251d]"
+              className="w-full rounded-xl border border-sage-200 bg-sage-50/50 px-3.5 py-2.5 text-sm text-sage-950 transition-all placeholder:text-sage-400 hover:border-sage-300 focus:border-sage-200 focus:bg-white focus:outline-none focus:shadow-none dark:border-sage-800 dark:bg-[#1b251d] dark:text-sage-50 dark:hover:border-sage-700 dark:focus:border-sage-800 dark:focus:bg-[#1b251d] dark:focus:shadow-none"
             />
             <p className="mt-1 text-[11px] text-sage-500 dark:text-sage-400">
               Powers TinyFish Search & Fetch probes. Get a free key at{" "}
@@ -138,7 +138,7 @@ export default function SettingsModal({
                 href="https://agent.tinyfish.ai/api-keys"
                 target="_blank"
                 rel="noreferrer"
-                className="underline hover:text-sage-700 dark:hover:text-sage-200"
+                className="transition-colors text-sage-700 hover:text-sage-900 dark:text-sage-300 dark:hover:text-sage-100 font-medium"
               >
                 agent.tinyfish.ai
               </a>
@@ -171,7 +171,7 @@ export default function SettingsModal({
                         e.target.value === "gemini" ? "gemini" : "none",
                     })
                   }
-                  className="w-full rounded-lg border border-sage-200 bg-white px-3 py-2 text-xs font-medium text-sage-900 outline-none focus:border-sage-500 dark:border-sage-700 dark:bg-[#151D16] dark:text-sage-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-3 py-2 text-xs font-medium text-sage-900 transition-all hover:border-sage-300 focus:border-sage-200 focus:outline-none focus:shadow-none dark:border-sage-700 dark:bg-[#151D16] dark:text-sage-100 dark:hover:border-sage-600 dark:focus:border-sage-700 dark:focus:shadow-none"
                 >
                   <option value="none">Rule-based scoring only</option>
                   <option value="gemini">Google Gemini AI</option>
@@ -192,7 +192,7 @@ export default function SettingsModal({
                   value={values.llmKey}
                   onChange={(e) => onChange({ llmKey: e.target.value })}
                   disabled={values.llmProvider !== "gemini"}
-                  className="w-full rounded-lg border border-sage-200 bg-white px-3 py-2 text-xs text-sage-900 outline-none disabled:cursor-not-allowed disabled:opacity-50 focus:border-sage-500 dark:border-sage-700 dark:bg-[#151D16] dark:text-sage-100"
+                  className="w-full rounded-xl border border-sage-200 bg-white px-3 py-2 text-xs text-sage-900 transition-all disabled:cursor-not-allowed disabled:opacity-50 hover:border-sage-300 focus:border-sage-200 focus:outline-none focus:shadow-none dark:border-sage-700 dark:bg-[#151D16] dark:text-sage-100 dark:hover:border-sage-600 dark:focus:border-sage-700 dark:focus:shadow-none"
                 />
               </div>
             </div>

@@ -34,7 +34,13 @@ npm run lint    # eslint
 npx tsc --noEmit          # typecheck (strict)
 npx -y tsx lib/selftest.ts  # engine self-test: good page outscores thin page,
                             # every fix cites a measured value, scoring deterministic
+npx -y tsx lib/security/selftest.ts  # 37 security assertions: SSRF bypasses,
+                            # rate limits, budgets, AES-GCM rotation/revocation,
+                            # redaction, prompt-injection defense. Exits non-zero on failure.
 ```
+
+See **`SECURITY.md`** for the full threat model, findings by severity, and the
+list of environment variables that control cost protection.
 
 Non-network API paths can be verified against a local server without a valid
 key (see `QA.md` for the full matrix and exact commands):
@@ -81,29 +87,50 @@ server-side cache. The report shows a "Live" badge with `fetchedAt`.
 component calls `api.search.tinyfish.ai` / `api.fetch.tinyfish.ai` directly,
 and `process.env.TINYFISH_API_KEY` is read only in the server route.
 
-## Rate limits (TinyFish free tier)
+## Rate limits and cost protection
 
-| API | Limit | How SiteScore stays inside it |
+**Every audit costs 4 upstream calls** (2 Fetch + 2 Search). SiteScore enforces
+hard server-side limits *before* any upstream call, so a blocked request costs
+nothing:
+
+| Guard | Default (production) | Purpose |
 |---|---|---|
-| Search | 30 req/min | 2 Search calls per audit (indexation + ranking probes) |
-| Fetch | 150 URLs/min | 2 Fetch calls per audit (1 URL × HTML + Markdown formats) |
+| `RATE_LIMIT_PER_MINUTE` | 10 | Per key fingerprint **and** per client IP |
+| `RATE_LIMIT_PER_HOUR` | 120 | Per identity |
+| `RATE_LIMIT_PER_DAY` | 500 | Per identity — hard spend ceiling per client |
+| `RATE_LIMIT_GLOBAL_PER_HOUR` | 3,000 | Platform-wide, across every key and IP |
+| `RATE_LIMIT_GLOBAL_PER_DAY` | 20,000 | Platform-wide daily bill ceiling |
+| `RATE_LIMIT_MAX_CONCURRENT` | 10 | Blocks parallel-request cost amplification |
+| `RATE_LIMIT_MAX_CONCURRENT_PER_IDENTITY` | 2 | One browser can't fan out |
+| `LLM_PLATFORM_KEY_PER_DAY` | 50 | Ceiling on platform-funded LLM calls |
 
-A single audit consumes 2 Search requests + 2 Fetch URLs. Back-to-back audits
-are fine; a burst of >15 audits/min may hit Search throttling and returns
-`429 rate_limited` with `retryable:true` (see troubleshooting).
+Hitting a limit returns `429` with a `Retry-After` header. If a configured
+rate-limit backend is unreachable the request is **denied** (`503`,
+fail-closed) — an unavailable limiter never becomes unlimited spend.
+
+> **Set `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` in production.**
+> Without them, limits are per server instance and an attacker gets a fresh
+> allowance on every cold start.
 
 ## Environment variables
 
-| Variable | Required | Purpose | Fallback |
-|---|---|---|---|
-| `TINYFISH_API_KEY` | Yes (or BYOK per request) | Server fallback key for TinyFish Search + Fetch. Get one free at https://agent.tinyfish.ai/api-keys | Per-request `tinyfishKey` in the `/api/audit` body |
-| `GEMINI_API_KEY` | No | Server fallback key for the optional LLM executive summary | Per-request `llmKey` with `llmProvider:"gemini"` |
+Full documentation with every knob is in **`.env.example`**. The essentials:
 
-**BYOK + env resolution** (`app/api/audit/route.ts:411-418`): the request-body
-`tinyfishKey` wins when present, otherwise `process.env.TINYFISH_API_KEY` is
-used. If neither is set → `400 missing_api_key` with a link to the key page.
-Keys are never echoed in responses or logs. In the UI, keys go in the
-collapsible Advanced section; they live only in page memory for the request
+| Variable | Default | Purpose |
+|---|---|---|
+| `ALLOW_PLATFORM_KEY` | `false` in production | Whether requests **without** a BYOK key may use the server's key. Keep unset so anonymous traffic can never bill you. |
+| `TINYFISH_API_KEY` | — | Server key, used only for BYOK-authenticated requests when platform keys are allowed |
+| `GEMINI_API_KEY` | — | Same, for the optional AI summary |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | — | Distributed rate limiting (required for global limits) |
+| `SITESCORE_ACCESS_TOKEN` | — | When set, `POST /api/audit` requires `x-sitescore-token` |
+| `KEY_ENCRYPTION_KEYRING` | — | `kid:base64key,...` for AES-256-GCM storage of keys; first entry is active |
+| `AUDIT_LOG_ENABLED` | `true` | Structured, hash-chained JSON audit events (no secrets) |
+
+**BYOK + env resolution**: the request-body `tinyfishKey` wins when present.
+The server env key is used **only** if `ALLOW_PLATFORM_KEY` permits it — in
+production it does not, by default. If neither is available → `400
+missing_api_key`. Keys are never echoed in responses or logs; logs record only a
+truncated HMAC fingerprint. In the UI, keys live in page memory for the request
 and are never persisted.
 
 ## Deploy
@@ -145,7 +172,15 @@ there is no database or persistent server.
 | 200 with `fetch_error_timeout` / latency warn | Page too slow (or TinyFish slow) | Cut TTFB < ~1s, defer heavy scripts, re-audit and compare `latencyMs` |
 | 400 `invalid_url` | Non-http(s) scheme, over 2000 chars, unparseable | Provide a plain `https://…` URL (bare `example.com/page` is auto-prefixed) |
 | 400 `private_host_not_allowed` | localhost / LAN / `169.254.x` / metadata hosts | Audits of private hosts are blocked by design; use a public URL |
-| 400 `invalid_request` | Malformed JSON or failed zod validation | Send valid JSON matching `{url, query?, tinyfishKey?, llmKey?, llmProvider?}` |
+| 400 `invalid_request` | Malformed JSON or failed validation | Send valid JSON matching `{url, query?, tinyfishKey?, llmKey?, llmProvider?}` |
+| 401 `unauthorized` | `SITESCORE_ACCESS_TOKEN` is set but absent/wrong | Send the token in `x-sitescore-token` |
+| 413 `invalid_request` | Request body over 16 KB | Shorten the URL/query; keys are not arbitrarily large |
+| 429 `rate_limited` | Per-minute/hour/day or global cap reached | Wait for `Retry-After` |
+| 429 `concurrency_limit` | Too many audits already running | Wait for the current one to finish |
+| 429 `budget_exhausted` | Daily platform budget exhausted | Add your own key, or raise `RATE_LIMIT_GLOBAL_PER_DAY` |
+| 503 `server_busy` | Global concurrency cap reached | Retry shortly |
+| 503 `rate_limiter_unavailable` | Configured rate-limit backend is down (fail-closed) | Check the Redis credentials |
+| 400 `private_host_not_allowed` | Target resolves to localhost / private / link-local / metadata | Use a public URL |
 | Client abort after 150s (`request_timeout`) | Very slow page + upstream chain | Retry once; if it repeats, the page itself is too slow — itself a P1 finding |
 
 ## API quick reference

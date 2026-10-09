@@ -23,7 +23,7 @@ interface AuditFormProps {
 }
 
 const inputClass =
-  "w-full rounded-md border border-sage-300/80 bg-white px-3 py-2 text-sm text-sage-950 outline-none transition-colors placeholder:text-sage-400 focus:border-sage-500 focus:ring-2 focus:ring-sage-500/20 dark:border-sage-700 dark:bg-sage-950 dark:text-sage-50 dark:placeholder:text-sage-500 dark:focus:border-sage-400 dark:focus:ring-sage-400/20";
+  "w-full rounded-xl border border-sage-300/60 bg-white px-3 py-2.5 text-sm text-sage-950 transition-all placeholder:text-sage-400 hover:border-sage-400/70 focus:border-sage-300/60 focus:bg-white focus:outline-none focus:shadow-none dark:border-sage-700 dark:bg-sage-950 dark:text-sage-50 dark:placeholder:text-sage-500 dark:hover:border-sage-600 dark:focus:border-sage-700 dark:focus:shadow-none";
 
 const SAMPLES = [
   { label: "Blog post", url: "https://example.com/blog/launch-notes" },
@@ -44,7 +44,7 @@ function hintFor(raw: string): UrlHint {
   if (/\s/.test(trimmed)) {
     return {
       kind: "error",
-      text: "URLs can't contain spaces — paste the full address instead.",
+      text: "URLs can't contain spaces - paste the full address instead.",
     };
   }
   const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed);
@@ -52,11 +52,11 @@ function hintFor(raw: string): UrlHint {
     return trimmed.includes(".")
       ? {
           kind: "note",
-          text: `Bare domain detected — we'll audit https://${trimmed}.`,
+          text: `Bare domain detected - we'll audit https://${trimmed}.`,
         }
       : {
           kind: "error",
-          text: "That doesn't look like a domain yet — try example.com/page.",
+          text: "That doesn't look like a domain yet - try example.com/page.",
         };
   }
   if (!/^https?:\/\//i.test(trimmed)) {
@@ -67,7 +67,7 @@ function hintFor(raw: string): UrlHint {
   }
   return {
     kind: "idle",
-    text: "Looks good — press Enter or Audit page to run.",
+    text: "Looks good - press Enter or Audit page to run.",
   };
 }
 
@@ -270,7 +270,7 @@ export default function AuditForm({
               </div>
               <p className="text-xs leading-relaxed text-sage-500 dark:text-sage-400">
                 Keys are sent to <code className="rounded bg-sage-100 px-1 py-0.5 font-mono text-[11px] dark:bg-sage-900">/api/audit</code> and used server-side
-                only — they never go to TinyFish from your browser, and they
+                only - they never go to TinyFish from your browser, and they
                 are kept in memory for this page only (never stored).
               </p>
             </div>
@@ -290,7 +290,7 @@ export default function AuditForm({
               className="h-4 w-4 animate-spin"
             />
           )}
-          {loading ? "Auditing — this can take up to two minutes…" : "Audit page"}
+          {loading ? "Auditing - this can take up to two minutes…" : "Audit page"}
         </button>
       </div>
     </form>

@@ -7,19 +7,19 @@ function verdictFor(grade: string, p0Count: number): string {
   const noun = p0Count === 1 ? "blocking issue keeps" : "blocking issues keep";
   if (grade === "A")
     return p0Count > 0
-      ? `Strong foundation — ${p0Count} ${noun} AI search from citing this page.`
-      : "Strong foundation — ready for AI search to cite this page.";
+      ? `Strong foundation - ${p0Count} ${noun} AI search from citing this page.`
+      : "Strong foundation - ready for AI search to cite this page.";
   if (grade === "B")
     return p0Count > 0
-      ? `Good progress — ${p0Count} ${noun} AI search from citing this page.`
-      : "Good progress — polish the details to earn more citations.";
+      ? `Good progress - ${p0Count} ${noun} AI search from citing this page.`
+      : "Good progress - polish the details to earn more citations.";
   if (grade === "C")
     return p0Count > 0
-      ? `Shaky ground — ${p0Count} ${noun} AI search from citing this page.`
-      : "Shaky ground — work through the fixes to earn citations.";
+      ? `Shaky ground - ${p0Count} ${noun} AI search from citing this page.`
+      : "Shaky ground - work through the fixes to earn citations.";
   return p0Count > 0
-    ? `Critical gaps — ${p0Count} ${noun} AI search from citing this page.`
-    : "Critical gaps — work through the fixes to become citable.";
+    ? `Critical gaps - ${p0Count} ${noun} AI search from citing this page.`
+    : "Critical gaps - work through the fixes to become citable.";
 }
 
 export default function ExecutiveSummary({
@@ -51,7 +51,7 @@ export default function ExecutiveSummary({
           </p>
           <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
             {p0Count > 0
-              ? `Start with the ${p0Count} blocking ${p0Count === 1 ? "fix" : "fixes"} — then work through ${p1Count} high-impact improvements.`
+              ? `Start with the ${p0Count} blocking ${p0Count === 1 ? "fix" : "fixes"} - then work through ${p1Count} high-impact improvements.`
               : p1Count > 0
                 ? `No blocking issues. ${p1Count} high-impact ${p1Count === 1 ? "improvement remains" : "improvements remain"} to earn more citations.`
                 : "No blocking or high-impact issues. Keep the page fast and structured."}
@@ -92,7 +92,7 @@ export default function ExecutiveSummary({
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {f.title}
                   </span>
-                  <span className="shrink-0 text-[11px] text-sage-500 hover:underline">
+                  <span className="shrink-0 text-[11px] text-sage-500 transition-colors hover:text-sage-800 dark:hover:text-sage-200">
                     View fix →
                   </span>
                 </button>
@@ -102,7 +102,7 @@ export default function ExecutiveSummary({
         </div>
       ) : (
         <p className="mt-3 text-xs text-sage-600 dark:text-sage-400">
-          No blocking P0 fixes detected — proceed with P1 optimizations.
+          No blocking P0 fixes detected - proceed with P1 optimizations.
         </p>
       )}
     </section>

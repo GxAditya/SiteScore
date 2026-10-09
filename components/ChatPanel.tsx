@@ -82,7 +82,7 @@ export default function ChatPanel({
       `Live audit complete for ${report.input.finalUrl || targetUrl}. Overall score: ${report.score.total}/100 (Grade ${report.score.grade}). ${
         p0Count > 0
           ? `Found ${p0Count} blocking P0 issue${p0Count > 1 ? "s" : ""} preventing AI search engines from citing your content.`
-          : "Found no blocking P0 issues — your page is highly citable by AI assistants."
+          : "Found no blocking P0 issues - your page is highly citable by AI assistants."
       } ${isIndexed ? `Indexed in search (Rank: ${rank != null ? `#${rank}` : "Unranked"}).` : "Not currently indexed in search probe."}`;
 
     return {
@@ -417,7 +417,7 @@ export default function ChatPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full rounded-xl border border-sage-200 bg-white py-2 pl-3 pr-9 text-xs text-sage-900 placeholder:text-sage-400 outline-none focus:border-sage-500 focus:ring-1 focus:ring-sage-500/30 dark:border-sage-700 dark:bg-[#182019] dark:text-sage-100 dark:placeholder:text-sage-500"
+            className="w-full rounded-2xl border border-sage-200/80 bg-white py-2.5 pl-3.5 pr-10 text-[13px] text-sage-900 transition-all placeholder:text-sage-400 hover:border-sage-300 focus:border-sage-200/80 focus:outline-none focus:shadow-none dark:border-sage-700 dark:bg-[#182019] dark:text-sage-100 dark:placeholder:text-sage-500 dark:hover:border-sage-600 dark:focus:border-sage-700 dark:focus:shadow-none"
           />
           <button
             type="button"

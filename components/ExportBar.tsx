@@ -20,7 +20,7 @@ export default function ExportBar({ report }: { report: AuditReport }) {
     toast(
       ok
         ? "Markdown copied to clipboard"
-        : "Copy failed — your browser blocked clipboard access",
+        : "Copy failed - your browser blocked clipboard access",
     );
   }
 

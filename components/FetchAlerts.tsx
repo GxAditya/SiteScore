@@ -9,7 +9,7 @@ const NEXT_STEPS: Record<string, string> = {
   fetch_error_empty_content:
     "Next: server-render the main article text into the HTML instead of building it only in client JS, then re-audit.",
   fetch_error_timeout:
-    "Next: bring server response (TTFB) under ~1s — cache the page and defer heavy third-party scripts — then re-audit.",
+    "Next: bring server response (TTFB) under ~1s - cache the page and defer heavy third-party scripts - then re-audit.",
   fetch_error_page_not_found:
     "Next: check the URL for typos, restore the page, or 301-redirect it to its replacement, then re-audit.",
 };

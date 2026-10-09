@@ -197,7 +197,7 @@ export function parsePageFacts(
       JSON.parse($(el).text());
       jsonLdValid++;
     } catch {
-      /* invalid block — counted in jsonLdBlocks but not jsonLdValid */
+      /* invalid block - counted in jsonLdBlocks but not jsonLdValid */
     }
   });
 
@@ -297,7 +297,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     checks.push({
       id: "r-title", category: "readability", status: "fail",
       label: "Title tag present (50–60 chars)",
-      detail: "The page has no <title> — AI tools and search results fall back to the URL.",
+      detail: "The page has no <title> - AI tools and search results fall back to the URL.",
       evidence: "0 <title> tags found; title length is 0 chars (expected 50–60).",
     });
   } else if (facts.titleLength >= 50 && facts.titleLength <= 60) {
@@ -305,21 +305,21 @@ export function buildChecks(input: AnalyzeInput): Check[] {
       id: "r-title", category: "readability", status: "pass",
       label: "Title tag present (50–60 chars)",
       detail: "Title length is in the ideal band for SERP display and AI citation.",
-      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") — within 50–60.`,
+      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - within 50–60.`,
     });
   } else if (facts.titleLength >= 30 && facts.titleLength <= 80) {
     checks.push({
       id: "r-title", category: "readability", status: "warn",
       label: "Title tag present (50–60 chars)",
       detail: "Title exists but will likely be truncated or rewritten in results.",
-      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") — outside 50–60.`,
+      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - outside 50–60.`,
     });
   } else {
     checks.push({
       id: "r-title", category: "readability", status: "fail",
       label: "Title tag present (50–60 chars)",
       detail: "Title is far outside the displayable band and will be rewritten.",
-      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") — expected 50–60.`,
+      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - expected 50–60.`,
     });
   }
 
@@ -327,7 +327,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     checks.push({
       id: "r-meta-description", category: "readability", status: "fail",
       label: "Meta description (120–160 chars)",
-      detail: "No meta description — snippets fall back to arbitrary page text.",
+      detail: "No meta description - snippets fall back to arbitrary page text.",
       evidence: "0 meta description tags found; length is 0 chars (expected 120–160).",
     });
   } else if (facts.metaDescriptionLength >= 120 && facts.metaDescriptionLength <= 160) {
@@ -335,21 +335,21 @@ export function buildChecks(input: AnalyzeInput): Check[] {
       id: "r-meta-description", category: "readability", status: "pass",
       label: "Meta description (120–160 chars)",
       detail: "Meta description fits the snippet band.",
-      evidence: `meta description is ${facts.metaDescriptionLength} chars — within 120–160.`,
+      evidence: `meta description is ${facts.metaDescriptionLength} chars - within 120–160.`,
     });
   } else if (facts.metaDescriptionLength >= 50 && facts.metaDescriptionLength <= 220) {
     checks.push({
       id: "r-meta-description", category: "readability", status: "warn",
       label: "Meta description (120–160 chars)",
       detail: "Meta description will be truncated or ignored at this length.",
-      evidence: `meta description is ${facts.metaDescriptionLength} chars ("${clip(facts.metaDescription, 80)}") — outside 120–160.`,
+      evidence: `meta description is ${facts.metaDescriptionLength} chars ("${clip(facts.metaDescription, 80)}") - outside 120–160.`,
     });
   } else {
     checks.push({
       id: "r-meta-description", category: "readability", status: "fail",
       label: "Meta description (120–160 chars)",
       detail: "Meta description length is unusable for snippets.",
-      evidence: `meta description is ${facts.metaDescriptionLength} chars — expected 120–160.`,
+      evidence: `meta description is ${facts.metaDescriptionLength} chars - expected 120–160.`,
     });
   }
 
@@ -362,12 +362,12 @@ export function buildChecks(input: AnalyzeInput): Check[] {
       facts.h1Count === 1
         ? "Exactly one H1 gives AI extractors a clear topic signal."
         : facts.h1Count === 0
-          ? "No H1 — AI tools must guess the page topic from body text."
+          ? "No H1 - AI tools must guess the page topic from body text."
           : "Multiple H1s split the topic signal for AI extractors.",
     evidence:
       facts.h1Count === 1
-        ? `exactly 1 <h1> ("${clip(facts.h1Texts[0] ?? "", 80)}") — single H1 present.`
-        : `${facts.h1Count} <h1> tags found${facts.h1Texts[0] ? ` (first: "${clip(facts.h1Texts[0], 60)}")` : " (none contain text)"} — expected exactly 1.`,
+        ? `exactly 1 <h1> ("${clip(facts.h1Texts[0] ?? "", 80)}") - single H1 present.`
+        : `${facts.h1Count} <h1> tags found${facts.h1Texts[0] ? ` (first: "${clip(facts.h1Texts[0], 60)}")` : " (none contain text)"} - expected exactly 1.`,
   });
 
   checks.push({
@@ -380,7 +380,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
         ? "Heading levels skip (e.g. H1 straight to H3), breaking section parsing."
         : facts.h2Count >= 1
           ? "H2 sections give AI tools citable chunks."
-          : "No H2 sections — long extracts come back as one undifferentiated block.",
+          : "No H2 sections - long extracts come back as one undifferentiated block.",
     evidence: `${facts.h2Count} <h2> tags; heading levels ${facts.headingSkipsLevels ? "SKIP (e.g. H1→H3)" : "are sequential (0 skips)"} across ${facts.h1Count + facts.h2Count} top-level headings.`,
   });
 
@@ -393,8 +393,8 @@ export function buildChecks(input: AnalyzeInput): Check[] {
       facts.wordCount >= 600
         ? "Enough extractable text for AI answers to cite this page."
         : facts.wordCount >= 300
-          ? "Thin extract — AI answers will prefer longer same-intent pages."
-          : "Too thin to rank or be cited — likely flagged as thin content.",
+          ? "Thin extract - AI answers will prefer longer same-intent pages."
+          : "Too thin to rank or be cited - likely flagged as thin content.",
     evidence: `fetch extraction yields ${facts.wordCount} words (pass ≥600, fail <300).`,
   });
 
@@ -413,7 +413,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     status: !facts.canonical ? "fail" : facts.canonicalIsAbsolute ? "pass" : "warn",
     label: "Canonical link",
     detail: !facts.canonical
-      ? "No canonical — duplicate/parameter URLs compete with this page."
+      ? "No canonical - duplicate/parameter URLs compete with this page."
       : facts.canonicalIsAbsolute
         ? "Absolute canonical consolidates ranking signals."
         : "Relative canonical is fragile across scrapers and mirrors.",
@@ -428,8 +428,8 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     status: facts.lang ? "pass" : "fail",
     label: "<html lang> attribute",
     detail: facts.lang
-      ? "Language declared — correct tokenization and snippet language."
-      : "No language declared — AI tools may mistokenize or mislabel the page.",
+      ? "Language declared - correct tokenization and snippet language."
+      : "No language declared - AI tools may mistokenize or mislabel the page.",
     evidence: facts.lang
       ? `<html lang="${facts.lang}"> present (1 attribute).`
       : "0 lang attributes on <html> (expected 1, e.g. lang=\"en\").",
@@ -439,8 +439,8 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     checks.push({
       id: "r-img-alt", category: "readability", status: "pass",
       label: "Image alt coverage",
-      detail: "No images to label — nothing for AI vision fallback to miss.",
-      evidence: "0 <img> tags found — 0 alt attributes needed (100% trivially covered).",
+      detail: "No images to label - nothing for AI vision fallback to miss.",
+      evidence: "0 <img> tags found - 0 alt attributes needed (100% trivially covered).",
     });
   } else {
     checks.push({
@@ -460,7 +460,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     label: "JSON-LD structured data",
     detail: facts.jsonLdValid >= 1
       ? "Structured data feeds AI answer engines typed facts."
-      : "No structured data — AI tools get prose only, no typed entities.",
+      : "No structured data - AI tools get prose only, no typed entities.",
     evidence: `${facts.jsonLdValid} valid JSON-LD blocks out of ${facts.jsonLdBlocks} script[type="application/ld+json"] tags (expected ≥1).`,
   });
 
@@ -495,14 +495,14 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     status: exactIndexed ? "pass" : domainIndexed ? "warn" : "fail",
     label: "Page indexed (site: probe)",
     detail: exactIndexed
-      ? "The exact URL surfaces in a site: query — it is indexed."
+      ? "The exact URL surfaces in a site: query - it is indexed."
       : domainIndexed
-        ? "The domain is indexed but this exact URL did not surface — weak indexation."
-        : "Neither the URL nor the domain surfaced — effectively invisible.",
+        ? "The domain is indexed but this exact URL did not surface - weak indexation."
+        : "Neither the URL nor the domain surfaced - effectively invisible.",
     evidence: exactIndexed
       ? `1 exact-URL match in ${siteResults.length} site: results for "${clip((q || hostOf(input.url)) ?? "", 60)}".`
       : domainIndexed
-        ? `0 exact-URL matches but ${siteResults.length} same-domain hits in site: results — page-level indexation missing.`
+        ? `0 exact-URL matches but ${siteResults.length} same-domain hits in site: results - page-level indexation missing.`
         : `0 exact-URL matches across ${siteResults.length} site: results (domain not surfacing either).`,
   });
 
@@ -566,10 +566,10 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     status: !redirected ? "pass" : sameHostRedirect ? "warn" : "fail",
     label: "No redirect dilution",
     detail: !redirected
-      ? "Requested URL is the final URL — no hop for crawlers."
+      ? "Requested URL is the final URL - no hop for crawlers."
       : sameHostRedirect
         ? "Same-host redirect leaks a little crawl budget and latency."
-        : "Cross-host redirect — signals and citations may land on the wrong URL.",
+        : "Cross-host redirect - signals and citations may land on the wrong URL.",
     evidence: redirected
       ? `requested ${clip(input.url, 80)} → final ${clip(input.finalUrl ?? input.url, 80)} (1 redirect hop${sameHostRedirect ? ", same host" : ", CROSS-HOST"}).`
       : `0 redirect hops: requested URL equals final URL (${clip(input.url, 80)}).`,
@@ -583,7 +583,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     label: "Fetch latency (<4s)",
     detail: "Slow fetches get truncated by AI tools and hurt crawl budget.",
     evidence: latency === undefined || latency === null
-      ? "latency not reported by fetch (0 measurements) — assumed unknown, treat as risk."
+      ? "latency not reported by fetch (0 measurements) - assumed unknown, treat as risk."
       : `fetch latency ${latency}ms (pass ≤4000ms, warn ≤8000ms).`,
   });
 
@@ -593,8 +593,8 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     status: facts.hasViewport ? "pass" : "fail",
     label: "Viewport meta (mobile)",
     detail: facts.hasViewport
-      ? "Mobile rendering declared — mobile-first indexing safe."
-      : "No viewport — mobile rendering and mobile-first indexing suffer.",
+      ? "Mobile rendering declared - mobile-first indexing safe."
+      : "No viewport - mobile rendering and mobile-first indexing suffer.",
     evidence: facts.hasViewport
       ? `1 viewport meta found (content="${clip(facts.viewportContent ?? "", 60)}").`
       : "0 viewport meta tags found (expected 1).",
@@ -607,9 +607,9 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     label: "Robots indexability",
     detail: facts.robotsBlocksIndexing
       ? "A noindex directive tells search engines to drop this page."
-      : "No blocking robots directive — page is eligible for indexing.",
+      : "No blocking robots directive - page is eligible for indexing.",
     evidence: facts.robotsMeta
-      ? `robots meta content="${clip(facts.robotsMeta, 60)}" (${facts.robotsBlocksIndexing ? "1 blocking directive found — BLOCKS indexing" : "0 blocking directives"}).`
+      ? `robots meta content="${clip(facts.robotsMeta, 60)}" (${facts.robotsBlocksIndexing ? "1 blocking directive found - BLOCKS indexing" : "0 blocking directives"}).`
       : "robots meta absent (0 blocking directives; defaults to index, follow).",
   });
 
@@ -621,7 +621,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     status: facts.wordCount < 300 || blockingErr ? "fail" : facts.wordCount < 600 || err ? "warn" : "pass",
     label: "Crawlable content risk",
     detail: blockingErr
-      ? `Fetch reported "${err}" — crawlers likely see the same wall.`
+      ? `Fetch reported "${err}" - crawlers likely see the same wall.`
       : facts.wordCount < 300
         ? "Sub-300-word extracts look like thin content to crawlers."
         : "Fetchable content clears the thin-content bar.",

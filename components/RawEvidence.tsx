@@ -139,7 +139,7 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
               type="button"
               aria-expanded={showAll}
               onClick={() => setShowAll((v) => !v)}
-              className="mt-2 text-xs font-semibold tabular-nums text-sage-700 underline-offset-2 hover:underline dark:text-sage-300"
+              className="mt-2 text-xs font-semibold tabular-nums text-sage-700 transition-colors hover:text-sage-950 dark:text-sage-300 dark:hover:text-sage-100"
             >
               {showAll
                 ? "Show less"
@@ -197,7 +197,7 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
               </h3>
               {report.raw.fetchErrors.length === 0 ? (
                 <p className="mt-1 font-mono text-xs text-sage-800 dark:text-sage-200">
-                  Clean fetch — both HTML and Markdown payloads successfully parsed.
+                  Clean fetch - both HTML and Markdown payloads successfully parsed.
                 </p>
               ) : (
                 <ul className="mt-1 grid gap-1">

@@ -3,13 +3,18 @@ import { z } from "zod";
 import * as cheerio from "cheerio";
 import { runAuditEngine } from "@/lib/engine";
 import { getAiSummary } from "@/lib/llm";
+import { gateAuditRequest, mayExposeUpstreamDetail } from "@/lib/security/gate";
+import { validateAuditUrl } from "@/lib/security/url-guard";
+import { auditLog, recordUsage } from "@/lib/security/audit-log";
+import { redact } from "@/lib/security/redact";
+import { securityConfig, allowPlatformKey } from "@/lib/security/config";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 // ---------------------------------------------------------------------------
-// POST /api/audit — server-side proxy to TinyFish Search + Fetch.
+// POST /api/audit - server-side proxy to TinyFish Search + Fetch.
 // Two-phase: (A) parallel Fetch HTML + Fetch Markdown, then derive the target
 // query if the caller did not supply one; (B) parallel Search indexation +
 // Search ranking. Live pages only: every Fetch body sends `ttl: 0`.
@@ -21,18 +26,33 @@ const FETCH_TIMEOUT_MS = 130_000;
 const SEARCH_TIMEOUT_MS = 30_000;
 const TINYFISH_KEYS_URL = "https://agent.tinyfish.ai/api-keys";
 
+/** Hard ceiling on the JSON request body (bytes). Rejects oversized payloads. */
+const MAX_BODY_BYTES = 16 * 1024;
+
 const NO_STORE = { "Cache-Control": "no-store" };
 
-const BodySchema = z.object({
-  url: z
-    .string()
-    .min(1, "url is required")
-    .max(2000, "url must be at most 2000 characters"),
-  query: z.string().max(300).optional().nullable(),
-  tinyfishKey: z.string().max(2000).optional().nullable(),
-  llmKey: z.string().max(2000).optional().nullable(),
-  llmProvider: z.enum(["gemini", "none"]).optional().nullable(),
-});
+/**
+ * Generation/usage parameters are server-owned. The client may request the
+ * LLM summary but can NEVER influence model, temperature or token budgets.
+ */
+const BodySchema = z
+  .object({
+    url: z
+      .string()
+      .min(1, "url is required")
+      .max(2000, "url must be at most 2000 characters"),
+    query: z
+      .string()
+      .max(300)
+      .optional()
+      .nullable()
+      // Strip control characters; prompt-injection vectors are neutralized later.
+      .transform((v) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, "") : v)),
+    tinyfishKey: z.string().min(8).max(2000).optional().nullable(),
+    llmKey: z.string().min(8).max(2000).optional().nullable(),
+    llmProvider: z.enum(["gemini", "none"]).optional().nullable(),
+  })
+  .strict();
 
 // --- Upstream shapes (subset of the TinyFish contracts) ---------------------
 
@@ -118,13 +138,75 @@ class UpstreamError extends Error {
 
 // --- Small helpers ----------------------------------------------------------
 
+/**
+ * Build a client-facing error response.
+ *
+ * In production the upstream message is replaced with a generic, safe copy so
+ * internal hosts, stack fragments and provider internals never reach a
+ * browser. Retry-After is set whenever the client is expected to back off.
+ */
 function jsonError(
   status: number,
   error: string,
   message: string,
   extra?: Record<string, unknown>
 ) {
-  return NextResponse.json({ error, message, ...extra }, { status, headers: NO_STORE });
+  const expose = mayExposeUpstreamDetail();
+  const headers: Record<string, string> = { ...NO_STORE };
+  const retryAfter =
+    typeof extra?.retryAfterSec === "number" ? extra.retryAfterSec : undefined;
+  if (typeof retryAfter === "number" && retryAfter > 0) {
+    headers["Retry-After"] = String(Math.min(Math.ceil(retryAfter), 86_400));
+  }
+  const body: Record<string, unknown> = expose
+    ? { error, message, ...extra }
+    : {
+        error,
+        message: sanitizeClientMessage(error, status),
+        retryable: extra?.retryable === true,
+      };
+  return NextResponse.json(body, { status, headers });
+}
+
+/**
+ * Map an internal error code to a fixed, safe, human-readable message.
+ * Allow-listed codes keep their (already safe, author-written) text; anything
+ * else falls back to a generic message. This is a hard allow-list, so a new
+ * upstream message can never leak by accident.
+ */
+const SAFE_ERROR_MESSAGES: Record<string, string> = {
+  invalid_request: "The request body was invalid.",
+  invalid_url: "Invalid URL. Provide an http(s) URL, e.g. https://example.com/page.",
+  private_host_not_allowed:
+    "Audits of localhost, private-network and cloud-metadata addresses are not allowed.",
+  missing_api_key:
+    "A TinyFish API key is required. Add your own key under Settings → API keys.",
+  invalid_api_key: "The TinyFish API key was rejected. Check the key and try again.",
+  rate_limited: "Rate limit reached. Please wait before running another audit.",
+  concurrency_limit: "Too many audits running at once. Wait for the current one to finish.",
+  server_busy: "The service is busy. Please retry shortly.",
+  budget_exhausted:
+    "The daily usage budget is exhausted. Add your own API key to continue.",
+  rate_limiter_unavailable: "The request could not be admitted. Please retry shortly.",
+  unauthorized: "A valid access token is required.",
+  upstream_timeout: "The upstream fetch timed out. The target page may be slow.",
+  tinyfish_unavailable: "The upstream provider is unavailable. Please retry shortly.",
+  internal_error: "Unexpected server error while running the audit.",
+};
+
+function sanitizeClientMessage(code: string, status: number): string {
+  const safe = SAFE_ERROR_MESSAGES[code];
+  if (safe) return safe;
+  if (status === 429) return SAFE_ERROR_MESSAGES.rate_limited;
+  if (status === 503) return SAFE_ERROR_MESSAGES.server_busy;
+  return SAFE_ERROR_MESSAGES.internal_error;
+}
+
+/**
+ * Upstream failure text for the audit log: always redacted, never returned.
+ */
+function detailOf(e: unknown): string {
+  return redact(e, 300);
 }
 
 function messageOf(e: unknown): string {
@@ -149,46 +231,12 @@ async function fetchWithTimeout(
   }
 }
 
-/** Normalize caller URL: prepend https:// when bare, drop fragment. Throws on invalid. */
-function normalizeUrl(raw: string): string {
-  let s = raw.trim();
-  if (s.length === 0) throw new Error("empty");
-  if (s.length > 2000) throw new Error("too-long");
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) s = "https://" + s;
-  const u = new URL(s);
-  if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("bad-protocol");
-  u.hash = "";
-  const out = u.toString();
-  if (out.length > 2000) throw new Error("too-long");
-  return out;
-}
-
-/** Literal-host blocklist against SSRF targets (localhost, private IPv4, metadata). */
-function isBlockedHost(hostname: string): boolean {
-  let h = hostname.trim().toLowerCase();
-  if (h.endsWith(".")) h = h.slice(0, -1);
-  // IPv6 brackets (URL.hostname normally strips them, but be safe)
-  if (h.startsWith("[") && h.endsWith("]")) h = h.slice(1, -1);
-
-  if (h === "localhost" || h === "0.0.0.0" || h === "::1") return true;
-  if (h === ".local" || h.endsWith(".local")) return true;
-  if (h === "metadata.google" || h === "metadata.google.internal") return true;
-  if (h === "instance-data" || h === "instance-data-compute") return true;
-  if (h.startsWith("127.") || h.startsWith("10.")) return true;
-  if (h.startsWith("192.168.") || h.startsWith("169.254.")) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) return true;
-  // Decimal-encoded IPv4 (e.g. http://2130706433/ === 127.0.0.1)
-  if (/^\d+$/.test(h)) {
-    const n = Number(h);
-    if (Number.isSafeInteger(n) && n >= 0 && n <= 0xffffffff) {
-      const first = Math.floor(n / 16_777_216);
-      if (first === 127 || first === 10) return true;
-    }
-  }
-  return false;
-}
-
-/** Canonical page identity for comparing input/final/search-result URLs. */
+/**
+ * Canonical page identity for comparing input/final/search-result URLs.
+ * NOTE: SSRF validation now lives in lib/security/url-guard.ts, which also
+ * resolves DNS and checks the resulting address. Do not reintroduce a
+ * literal-only blocklist here.
+ */
 function canonUrl(u: string): string | null {
   try {
     const p = new URL(u.trim());
@@ -298,7 +346,7 @@ async function tinyfishFetch(
       {
         method: "POST",
         headers: { "X-API-Key": key, "Content-Type": "application/json" },
-        // ttl: 0 forces a live fetch (PRD req #5) — never serve a saved copy.
+        // ttl: 0 forces a live fetch (PRD req #5) - never serve a saved copy.
         body: JSON.stringify({
           urls: [url],
           format,
@@ -364,66 +412,123 @@ async function tinyfishSearch(
 // --- Handler ----------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
+  const cfg = securityConfig();
+
+  // ---- 0. Reject oversized bodies before reading them into memory --------
+  const declaredLength = Number(req.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return jsonError(413, "invalid_request", "Request body is too large.");
+  }
+
   let body: unknown;
   try {
-    body = await req.json();
+    const raw = await req.text();
+    if (raw.length > MAX_BODY_BYTES) {
+      return jsonError(413, "invalid_request", "Request body is too large.");
+    }
+    body = JSON.parse(raw);
   } catch {
     return jsonError(400, "invalid_request", "Request body must be valid JSON.");
   }
 
   const parsed = BodySchema.safeParse(body);
   if (!parsed.success) {
-    return jsonError(400, "invalid_request", "Invalid request body.", {
-      details: parsed.error.issues.map((i) => ({
-        path: i.path.join("."),
-        message: i.message,
-      })),
-    });
+    return jsonError(400, "invalid_request", "Invalid request body.");
   }
 
-  // 1. Normalize + validate URL (before key check so bad URLs always 400).
-  let normalizedUrl: string;
-  try {
-    normalizedUrl = normalizeUrl(parsed.data.url);
-  } catch {
-    return jsonError(
-      400,
-      "invalid_url",
-      "Invalid URL. Provide an http(s) URL up to 2000 characters, e.g. https://example.com/page."
-    );
-  }
-
-  let hostname: string;
-  try {
-    hostname = new URL(normalizedUrl).hostname;
-  } catch {
-    return jsonError(400, "invalid_url", "Invalid URL. Provide an http(s) URL, e.g. https://example.com/page.");
-  }
-  if (isBlockedHost(hostname)) {
-    return jsonError(
-      400,
-      "private_host_not_allowed",
-      "Audits of localhost, private-network (.local, 127.x, 10.x, 192.168.x, 172.16-31.x, 169.254.x) and cloud-metadata hosts are not allowed."
-    );
-  }
-
-  // 2. Resolve API key: BYOK body field wins, env is the fallback. Never echo it.
-  const envKey = (process.env.TINYFISH_API_KEY ?? "").trim();
   const bodyKey = (parsed.data.tinyfishKey ?? "").trim();
-  const apiKey = bodyKey || envKey;
-  if (!apiKey) {
-    return jsonError(400, "missing_api_key", `A TinyFish API key is required. Set TINYFISH_API_KEY on the server or pass "tinyfishKey" in the request body. Get a free key at ${TINYFISH_KEYS_URL}.`, {
-      docs: TINYFISH_KEYS_URL,
+  const wantsLlm = parsed.data.llmProvider === "gemini";
+
+  // ---- 1. Pre-flight gate: auth, rate limits, concurrency, budgets -------
+  // Every rejection below happens BEFORE any provider or LLM call, so a
+  // blocked request costs the developer nothing.
+  const gate = await gateAuditRequest({ req, byokKey: bodyKey || null, wantsLlm });
+  if (!gate.ok) {
+    return jsonError(gate.status, gate.code, gate.message, {
+      retryable: gate.status === 429 || gate.status === 503,
+      retryAfterSec: gate.retryAfterSec,
     });
   }
+  const { identity } = gate;
 
-  const userQuery = (parsed.data.query ?? "").trim();
+  let gateReleased = false;
+  const release = async () => {
+    if (gateReleased) return;
+    gateReleased = true;
+    await gate.release();
+  };
 
   try {
+    // ---- 2. Normalize + validate URL (SSRF-hardened, DNS-resolved) -------
+    const urlCheck = await validateAuditUrl(parsed.data.url);
+    if (!urlCheck.ok) {
+      const code =
+        urlCheck.reason === "blocked_host" || urlCheck.reason === "dns_blocked"
+          ? "private_host_not_allowed"
+          : "invalid_url";
+      auditLog({
+        event: "audit.failed",
+        requestId: identity.requestId,
+        actorId: identity.actorId,
+        keyId: identity.keyId,
+        keySource: identity.keySource,
+        status: code,
+        detail: `url_rejected:${urlCheck.reason}`,
+      });
+      return jsonError(400, code, urlCheck.message);
+    }
+    const normalizedUrl = urlCheck.url;
+    const hostname = urlCheck.hostname;
+
+    // ---- 3. Resolve the provider key. BYOK wins; the platform fallback is
+    //         already gated above. The key is never echoed or logged. ------
+    const envKey = (process.env.TINYFISH_API_KEY ?? "").trim();
+    const apiKey = bodyKey || envKey;
+    if (!apiKey) {
+      return jsonError(400, "missing_api_key", "A TinyFish API key is required.", {
+        docs: TINYFISH_KEYS_URL,
+      });
+    }
+
+    const userQuery = (parsed.data.query ?? "").trim();
+
+    auditLog({
+      event: "audit.started",
+      requestId: identity.requestId,
+      actorId: identity.actorId,
+      keyId: identity.keyId,
+      keySource: identity.keySource,
+      targetHost: hostname,
+    });
+    recordUsage({ actorId: identity.actorId, keyId: identity.keyId });
+
+    /**
+     * Hard ceiling on metered upstream calls for this single audit.
+     *
+     * The current flow is structurally fixed at 4 calls (2 Fetch + 2 Search),
+     * so this is defence in depth: if someone later adds a retry loop, a
+     * pagination loop or an extra search, this fails the audit loudly instead
+     * of quietly multiplying spend per request.
+     */
+    let upstreamCalls = 0;
+    const spendUpstream = async <T>(fn: () => Promise<T>): Promise<T> => {
+      upstreamCalls += 1;
+      if (upstreamCalls > cfg.cost.maxUpstreamCallsPerAudit) {
+        throw new UpstreamError(
+          502,
+          "tinyfish_unavailable",
+          "Upstream call budget for this audit exceeded.",
+          false
+        );
+      }
+      return fn();
+    };
+
     // ---- Phase A: parallel live fetches (HTML + Markdown) ------------------
     const [htmlSettled, mdSettled] = await Promise.allSettled([
-      tinyfishFetch(normalizedUrl, "html", apiKey),
-      tinyfishFetch(normalizedUrl, "markdown", apiKey),
+      spendUpstream(() => tinyfishFetch(normalizedUrl, "html", apiKey)),
+      spendUpstream(() => tinyfishFetch(normalizedUrl, "markdown", apiKey)),
     ]);
 
     const fetchErrors: Array<{ url: string; error: string; status?: number }> = [];
@@ -468,11 +573,28 @@ export async function POST(req: NextRequest) {
     }
     if (!hasData && transportFailure) {
       const t = transportFailure;
+      // Log the failure even though we return early - the concurrency slot is
+      // released by the outer `finally`.
+      auditLog({
+        event: "audit.failed",
+        requestId: identity.requestId,
+        actorId: identity.actorId,
+        keyId: identity.keyId,
+        keySource: identity.keySource,
+        status: t.code,
+        latencyMs: Date.now() - startedAt,
+        upstreamCalls,
+        targetHost: hostname,
+        detail: detailOf(t.message),
+      });
       if (t.code === "invalid_api_key") {
         return jsonError(401, "invalid_api_key", t.message, { retryable: false });
       }
       if (t.code === "rate_limited") {
-        return jsonError(429, "rate_limited", t.message, { retryable: true });
+        return jsonError(429, "rate_limited", t.message, {
+          retryable: true,
+          retryAfterSec: 60,
+        });
       }
       if (t.retryable) {
         return jsonError(t.status, t.code, t.message, { retryable: true });
@@ -541,8 +663,8 @@ export async function POST(req: NextRequest) {
     const rankingQuery = resolvedQuery;
 
     const [idxSettled, rankSettled] = await Promise.allSettled([
-      tinyfishSearch({ query: indexationQuery, include_domains: hostname }, apiKey),
-      tinyfishSearch({ query: rankingQuery }, apiKey),
+      spendUpstream(() => tinyfishSearch({ query: indexationQuery, include_domains: hostname }, apiKey)),
+      spendUpstream(() => tinyfishSearch({ query: rankingQuery }, apiKey)),
     ]);
 
     const idxData: SearchUpstream | null =
@@ -681,7 +803,7 @@ export async function POST(req: NextRequest) {
           category: "readability",
           status: "fail",
           label: "Page returned empty content",
-          detail: "The fetch succeeded but the extractor found nothing to read — likely a thin or script-only page.",
+          detail: "The fetch succeeded but the extractor found nothing to read - likely a thin or script-only page.",
           evidence: fetchErrors.filter((e) => fetchErrorCode(e) === code).map((e) => e.error).join(" | "),
         });
         fixes.push({
@@ -737,7 +859,15 @@ export async function POST(req: NextRequest) {
     const summary = engine.connection.summary;
     const correlation = engine.connection.correlation;
 
-    // ---- Optional LLM summary (Task 5, server-only; never fails the audit) --
+    // ---- Optional LLM summary (server-only; never fails the audit) --------
+    // A BYOK LLM key is preferred; otherwise the server LLM key may be used,
+    // but ONLY when platform keys are explicitly enabled (see gate.ts) and
+    // only within the LLM daily budget checked up front.
+    const llmKeySource = (parsed.data.llmKey ?? "").trim()
+      ? "byok"
+      : (process.env.GEMINI_API_KEY ?? "").trim() && identity.keySource === "platform"
+        ? "platform"
+        : "none";
     const aiSummary = await getAiSummary(
       {
         checks,
@@ -750,8 +880,54 @@ export async function POST(req: NextRequest) {
         },
         input: { url: normalizedUrl, finalUrl, query: resolvedQuery },
       },
-      { llmKey: parsed.data.llmKey, llmProvider: parsed.data.llmProvider }
+      {
+        llmKey: parsed.data.llmKey,
+        llmProvider: parsed.data.llmProvider,
+        /**
+         * The platform LLM key is opt-in under exactly the same rules as the
+         * platform TinyFish key. Passing "" explicitly (rather than undefined)
+         * stops `getAiSummary` from reaching for GEMINI_API_KEY, so a caller
+         * who supplied their own TinyFish key but no LLM key cannot silently
+         * spend the developer's model quota.
+         */
+        envKey: allowPlatformKey() ? undefined : "",
+        // Server-owned generation budget. The client cannot influence these.
+        maxOutputTokens: cfg.cost.llmMaxOutputTokens,
+        maxPromptChars: cfg.cost.llmMaxPromptChars,
+        timeoutMs: Math.min(
+          cfg.cost.maxAuditDurationMs - (Date.now() - startedAt),
+          25_000
+        ),
+      }
     );
+
+    if (wantsLlm) {
+      auditLog({
+        event: "llm.call",
+        requestId: identity.requestId,
+        actorId: identity.actorId,
+        keyId: identity.keyId,
+        keySource: identity.keySource,
+        model: "gemini-2.0-flash",
+        status: aiSummary.generated ? "ok" : "skipped",
+        totalTokens: aiSummary.usage?.totalTokens,
+        promptTokens: aiSummary.usage?.promptTokens,
+        outputTokens: aiSummary.usage?.outputTokens,
+        detail: llmKeySource === "none" ? "no_llm_key_available" : aiSummary.warning,
+      });
+    }
+
+    auditLog({
+      event: "audit.completed",
+      requestId: identity.requestId,
+      actorId: identity.actorId,
+      keyId: identity.keyId,
+      keySource: identity.keySource,
+      status: "ok",
+      latencyMs: Date.now() - startedAt,
+      upstreamCalls,
+      targetHost: hostname,
+    });
 
     // ---- Assemble contract response --------------------------------------
     return NextResponse.json(
@@ -860,10 +1036,40 @@ export async function POST(req: NextRequest) {
     );
   } catch (e) {
     if (e instanceof UpstreamError) {
-      return jsonError(e.status, e.code, e.message, { retryable: e.retryable });
+      auditLog({
+        event: "audit.failed",
+        requestId: identity.requestId,
+        actorId: identity.actorId,
+        keyId: identity.keyId,
+        keySource: identity.keySource,
+        status: e.code,
+        latencyMs: Date.now() - startedAt,
+        // Redacted: may contain upstream hostnames or response fragments.
+        detail: detailOf(e.message),
+      });
+      return jsonError(e.status, e.code, e.message, {
+        retryable: e.retryable,
+        retryAfterSec: e.status === 429 ? 60 : undefined,
+      });
     }
+    auditLog({
+      event: "audit.failed",
+      requestId: identity.requestId,
+      actorId: identity.actorId,
+      keyId: identity.keyId,
+      keySource: identity.keySource,
+      status: "internal_error",
+      latencyMs: Date.now() - startedAt,
+      detail: detailOf(e),
+    });
+    // Never surface stack traces or internal error text to the client.
     return jsonError(500, "internal_error", "Unexpected server error while running the audit.", {
       retryable: false,
     });
+  } finally {
+    // CRITICAL: the concurrency slot must be returned on EVERY exit path -
+    // success, error, and the early returns inside the try block. Leaking a
+    // slot would permanently shrink capacity until all traffic is refused.
+    await release();
   }
 }

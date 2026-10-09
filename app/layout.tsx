@@ -29,18 +29,18 @@ const SITE_DESCRIPTION =
 
 export const metadata: Metadata = {
   title: {
-    default: `${SITE_NAME} — AI Search & Readability Auditor`,
+    default: `${SITE_NAME} - AI Search & Readability Auditor`,
     template: `%s · ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   openGraph: {
-    title: "SiteScore — AI Search & Readability Auditor",
+    title: "SiteScore - AI Search & Readability Auditor",
     description: SITE_DESCRIPTION,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SiteScore — AI Search & Readability Auditor",
+    title: "SiteScore - AI Search & Readability Auditor",
     description: SITE_DESCRIPTION,
   },
 };

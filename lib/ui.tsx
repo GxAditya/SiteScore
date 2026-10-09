@@ -124,7 +124,7 @@ export function CopyButton({
 
   async function onClick() {
     const ok = await copyText(text);
-    toast(ok ? "Copied" : "Copy failed — select the text manually");
+    toast(ok ? "Copied" : "Copy failed - select the text manually");
     if (ok) {
       setDone(true);
       window.setTimeout(() => setDone(false), 2000);

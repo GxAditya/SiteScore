@@ -24,9 +24,9 @@ const PRIORITY_STYLE: Record<FixPriority, string> = {
 };
 
 const GROUP_NOTE: Record<FixPriority, string> = {
-  P0: "Blocking — prevents AI agents & search from citing your page.",
-  P1: "High impact — fix this week to increase visibility.",
-  P2: "Opportunistic — compounds search understanding over time.",
+  P0: "Blocking - prevents AI agents & search from citing your page.",
+  P1: "High impact - fix this week to increase visibility.",
+  P2: "Opportunistic - compounds search understanding over time.",
 };
 
 type Filter = "All" | FixPriority;
@@ -38,7 +38,7 @@ function CodeBlock({ kind, code }: { kind: "before" | "after"; code: string }) {
     <div className="overflow-hidden rounded-xl border border-sage-200 dark:border-sage-800">
       <div className="flex items-center justify-between gap-2 border-b border-sage-200 bg-sage-50/80 px-3 py-1.5 dark:border-sage-800 dark:bg-sage-900/40">
         <span className="text-xs font-semibold text-sage-700 dark:text-sage-300">
-          {isAfter ? "After — Suggested Fix" : "Before — Current Markup"}
+          {isAfter ? "After - Suggested Fix" : "Before - Current Markup"}
         </span>
         <CopyButton
           text={code}
@@ -71,8 +71,8 @@ function FixCard({
     const ok = await copyText(prompt);
     toast(
       ok
-        ? "Agent prompt copied — paste into Claude, Cursor, or ChatGPT"
-        : "Copy failed — select the text manually",
+        ? "Agent prompt copied - paste into Claude, Cursor, or ChatGPT"
+        : "Copy failed - select the text manually",
     );
     if (ok) {
       setCopied(true);
@@ -258,7 +258,7 @@ export default function FixesList({
             />
             <div>
               <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
-                No fixes needed — your page is in peak condition!
+                No fixes needed - your page is in peak condition!
               </h3>
               <p className="mt-1 text-xs text-sage-700 dark:text-sage-300">
                 Every audit check passed. AI search crawlers can read, index, and cite your page smoothly.
@@ -310,8 +310,8 @@ export default function FixesList({
                 const ok = await copyText(buildFullRepairBrief(fixes, ctx));
                 toast(
                   ok
-                    ? "Full repair brief copied — paste into your AI coding tool"
-                    : "Copy failed — select text manually",
+                    ? "Full repair brief copied - paste into your AI coding tool"
+                    : "Copy failed - select text manually",
                 );
               }}
               className={cn(

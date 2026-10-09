@@ -272,7 +272,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
               <col className="w-[54%]" />
             </colgroup>
             <caption className="px-4 pt-3 text-left text-xs font-semibold tabular-nums text-sage-950 dark:text-sage-50">
-              Ranking results for &ldquo;{report.input.query}&rdquo; — showing{" "}
+              Ranking results for &ldquo;{report.input.query}&rdquo; - showing{" "}
               {visibleRanks.length} of {ranking.results.length}
             </caption>
             <thead className="sticky top-0 z-10 bg-white dark:bg-[#161D17]">
@@ -295,7 +295,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
                   className="border-b border-sage-100/70 transition-colors last:border-0 hover:bg-sage-50/50 dark:border-sage-800 dark:hover:bg-sage-900/40"
                 >
                   <td className="px-4 py-2.5 align-top font-mono text-xs tabular-nums text-sage-500 dark:text-sage-400">
-                    {r.position ?? "—"}
+                    {r.position ?? "-"}
                   </td>
                   <td className="px-4 py-2.5 align-top">
                     <div className="min-w-0 space-y-0.5">
@@ -303,7 +303,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
                         href={r.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="block font-medium leading-snug text-sage-950 underline decoration-sage-300 underline-offset-2 hover:decoration-sage-950 dark:text-sage-50 dark:decoration-sage-700 dark:hover:decoration-sage-200"
+                        className="block font-medium leading-snug text-sage-950 transition-colors hover:text-sage-700 dark:text-sage-50 dark:hover:text-sage-200"
                       >
                         <Highlighted text={r.title || r.url} terms={terms} />
                       </a>
@@ -326,7 +326,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
                 type="button"
                 aria-expanded={showAllRanks}
                 onClick={() => setShowAllRanks((v) => !v)}
-                className="text-xs font-semibold text-sage-700 underline-offset-2 hover:underline dark:text-sage-300"
+                className="text-xs font-semibold text-sage-700 transition-colors hover:text-sage-950 dark:text-sage-300 dark:hover:text-sage-100"
               >
                 {showAllRanks
                   ? "Show fewer"
@@ -351,7 +351,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
                 <div className="min-w-0 space-y-0.5 overflow-hidden">
                   <div className="flex min-w-0 items-start gap-2">
                     <span className="shrink-0 font-mono text-xs tabular-nums text-sage-500 dark:text-sage-400">
-                      #{c.position ?? "—"}
+                      #{c.position ?? "-"}
                     </span>
                     <a
                       href={c.url}

@@ -43,7 +43,7 @@ export function candidateTitle(query: string, url: string): string {
 export function candidateMeta(query: string, facts: PageFacts): string {
   const head = capFirst(clip(query || facts.h1Texts[0] || "Page", 50));
   const tail = clip(facts.textExcerpt || facts.h1Texts[0] || "Learn more.", 100);
-  const full = `${head} — ${tail}`;
+  const full = `${head} - ${tail}`;
   if (full.length <= 160) return full;
   return clip(full, 160);
 }
@@ -137,7 +137,7 @@ export function buildFixes(input: FixesInput): Fix[] {
       why: `Measured ${facts.wordCount} words of extractable text (${wordsSt === "fail" ? "under the 300-word thin-content bar" : "under the 600-word citation bar"}): AI answers will cite longer same-intent pages first.`,
       how: `1. Add ${Math.max(600 - facts.wordCount, 0)}+ words: definition, 3–5 H2 sections, FAQ (4–6 Q&As). 2. Put the query answer in the first 100 words. 3. Re-fetch markdown and confirm wordCount ≥600.`,
       codeBefore: `<!-- current extraction: ${facts.wordCount} words, excerpt: "${clip(facts.textExcerpt, 120)}" -->`,
-      codeAfter: `## ${capFirst(clip(q || "Topic", 60))} — quick answer\n<100-word direct answer with the query terms>\n\n## FAQ\n### Q1…?  A… (40–60 words each, 4–6 Q&As)`,
+      codeAfter: `## ${capFirst(clip(q || "Topic", 60))} - quick answer\n<100-word direct answer with the query terms>\n\n## FAQ\n### Q1…?  A… (40–60 words each, 4–6 Q&As)`,
     });
   }
 
@@ -246,7 +246,7 @@ export function buildFixes(input: FixesInput): Fix[] {
     push(6, rankSt === "fail" ? "P0" : "P1", {
       priority: rankSt === "fail" ? "P0" : "P1",
       title: `Win a top-10 slot for "${clip(q, 50)}" (${competitors.length} competitors visible, you are unranked)`,
-      why: `Measured 0 ranking hits for this URL across the observed results while ${competitors.length} same-intent competitors rank for "${clip(q, 50)}" — the ${facts.wordCount}-word page earns 0 query clicks.`,
+      why: `Measured 0 ranking hits for this URL across the observed results while ${competitors.length} same-intent competitors rank for "${clip(q, 50)}" - the ${facts.wordCount}-word page earns 0 query clicks.`,
       how: `1. Mirror the top-3 competitor subtopics as H2s. 2. Answer the query in the first 100 words. 3. Ship the title/meta rewrites above (they carry ${tokenizeLen(q)} query terms). 4. Re-probe ranking weekly.`,
       codeBefore: `<!-- SERP today: unranked for "${clip(q, 50)}"; page title ${facts.titleLength} chars, meta ${facts.metaDescriptionLength} chars -->`,
       codeAfter: `<title>${candidateTitle(q, input.url)}</title>\n<meta name="description" content="${candidateMeta(q, facts)}">`,
@@ -262,7 +262,7 @@ export function buildFixes(input: FixesInput): Fix[] {
       why: `Measured snippet term coverage below 50% for "${clip(q, 50)}" even though the ${facts.titleLength}-char title and ${facts.metaDescriptionLength}-char meta pass: the body intro never states the query plainly across ${facts.wordCount} words.`,
       how: "1. Open with a 40–60-word answer sentence containing every query term. 2. Repeat the primary term once per H2. 3. Re-check coverage reads ≥50%.",
       codeBefore: `<!-- first ~200 chars today: "${clip(facts.textExcerpt, 120)}" -->`,
-      codeAfter: `<p>${capFirst(clip(q, 80))} — direct 40–60-word answer using every query term verbatim…</p>`,
+      codeAfter: `<p>${capFirst(clip(q, 80))} - direct 40–60-word answer using every query term verbatim…</p>`,
     });
   }
 
@@ -307,7 +307,7 @@ export function buildFixes(input: FixesInput): Fix[] {
       priority: latSt === "fail" ? "P1" : "P2",
       title: latSt === "fail" ? "Bring fetch latency under 4s (currently >8s)" : "Trim fetch latency toward <2.5s (currently >4s)",
       why: `Measured fetch latency ${latSt === "fail" ? "above 8000ms" : "between 4000–8000ms"} (pass ≤4000ms): slow fetches get truncated by AI tools and burn crawl budget on a ${facts.wordCount}-word page.`,
-      how: "1. Compress/AVIF images, cut render-blocking JS. 2. Cache HTML at the edge (live fetch still hits origin — keep TTFB <600ms). 3. Re-fetch and confirm ≤4000ms.",
+      how: "1. Compress/AVIF images, cut render-blocking JS. 2. Cache HTML at the edge (live fetch still hits origin - keep TTFB <600ms). 3. Re-fetch and confirm ≤4000ms.",
       codeBefore: "<!-- no resource hints or image budget enforced -->",
       codeAfter: '<link rel="preload" as="image" href="/og-cover.avif">\n<!-- budget: TTFB <600ms, full fetch ≤4000ms -->',
     });
@@ -383,7 +383,7 @@ export function buildFixes(input: FixesInput): Fix[] {
           why: `Measured ${facts.imgWithAlt}/${facts.imgTotal} images labeled: the remaining ${facts.imgTotal - facts.imgWithAlt} images contribute 0 words to text-only AI extraction.`,
           how: "1. Give each image a literal 5–12-word alt. 2. Front-load the distinguishing noun. 3. Re-parse to 100% coverage.",
           codeBefore: facts.excerpts.imgWithoutAltTag || `<!-- ${facts.imgTotal - facts.imgWithAlt} unlabeled <img> -->`,
-          codeAfter: `<img src="…" alt="${capFirst(clip(q || "Topic", 40))} — specific visual detail in 5–12 words">`,
+          codeAfter: `<img src="…" alt="${capFirst(clip(q || "Topic", 40))} - specific visual detail in 5–12 words">`,
         }]
         : []),
       {

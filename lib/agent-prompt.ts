@@ -17,7 +17,7 @@ function requestedUrl(ctx: AgentPromptContext): string {
   return ctx.url || ctx.finalUrl || "(page URL unavailable)";
 }
 
-/** First non-empty line of a snippet — used as a searchable marker. */
+/** First non-empty line of a snippet - used as a searchable marker. */
 function markerOf(code: string): string {
   const line =
     code
@@ -43,7 +43,7 @@ export function buildFixPrompt(
   const marker = after ? markerOf(after) : markerOf(fix.how);
 
   const lines: string[] = [];
-  lines.push(`## Fix [${fix.priority}] — ${fix.title}`);
+  lines.push(`## Fix [${fix.priority}] - ${fix.title}`);
   lines.push("");
   lines.push(`Task: ${fix.how}`);
   lines.push("");
@@ -56,10 +56,10 @@ export function buildFixPrompt(
   lines.push("");
   lines.push("Current code:");
   lines.push("```html");
-  lines.push(before || "<!-- not present — add it -->");
+  lines.push(before || "<!-- not present - add it -->");
   lines.push("```");
   lines.push("");
-  lines.push("Required end-state — write exactly:");
+  lines.push("Required end-state - write exactly:");
   lines.push("```html");
   lines.push(after || fix.how);
   lines.push("```");
@@ -78,7 +78,7 @@ export function buildFixPrompt(
   );
   lines.push("");
   lines.push(
-    "Constraint: minimal diff — edit only the snippet above. Do not touch unrelated markup, styles, scripts, or dependencies.",
+    "Constraint: minimal diff - edit only the snippet above. Do not touch unrelated markup, styles, scripts, or dependencies.",
   );
   return lines.join("\n");
 }
@@ -95,7 +95,7 @@ export function buildFullRepairBrief(
       (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9),
   );
   const header = [
-    `# Repair brief — ${page}`,
+    `# Repair brief - ${page}`,
     "",
     `Target query: "${query}". Apply the fixes below in order (P0 first). Keep every diff minimal; verify each fix against its acceptance checks before moving on.`,
   ];

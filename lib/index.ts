@@ -1,4 +1,4 @@
-/** SiteScore audit engine — pure functions, no network. Importable by /api/audit. */
+/** SiteScore audit engine - pure functions, no network. Importable by /api/audit. */
 
 export type {
   Check,

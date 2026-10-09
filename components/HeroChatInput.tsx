@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, type KeyboardEvent } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowRight,
+  Check,
   CircleNotch,
   Faders,
   Globe,
   MagnifyingGlass,
+  X,
 } from "@phosphor-icons/react";
 import { type AuditFormValues } from "./AuditForm";
 
@@ -20,7 +23,7 @@ interface HeroChatInputProps {
 
 const SAMPLE_PROMPTS = [
   {
-    label: "Linear Product Page",
+    label: "Linear",
     url: "https://linear.app",
     query: "linear issue tracking software",
   },
@@ -48,13 +51,13 @@ function hintFor(raw: string): UrlHint {
   if (!trimmed) {
     return {
       kind: "idle",
-      text: "Paste any public page URL. The run takes up to two minutes.",
+      text: "Paste any public page URL. Runs live in about 90 seconds.",
     };
   }
   if (/\s/.test(trimmed)) {
     return {
       kind: "error",
-      text: "URLs cannot contain spaces — check for a stray space and retry.",
+      text: "URLs can't contain spaces - double-check and try again.",
     };
   }
   const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed);
@@ -62,22 +65,22 @@ function hintFor(raw: string): UrlHint {
     return trimmed.includes(".")
       ? {
           kind: "note",
-          text: `Domain detected — will audit https://${trimmed}`,
+          text: `We'll add https:// automatically for you.`,
         }
       : {
           kind: "error",
-          text: "Enter a valid URL or domain, e.g. example.com/page.",
+          text: "Enter a valid URL or domain - like example.com or your page link.",
         };
   }
   if (!/^https?:\/\//i.test(trimmed)) {
     return {
       kind: "error",
-      text: "Only http(s) URLs can be audited — private hosts are blocked by design.",
+      text: "We only audit public http(s) URLs - private hosts aren't reachable.",
     };
   }
   return {
     kind: "idle",
-    text: "Ready — press Enter or Audit to start the live run.",
+    text: "Looks good. Press Enter or tap Audit to start.",
   };
 }
 
@@ -105,100 +108,118 @@ export default function HeroChatInput({
   }
 
   const isError = hint.kind === "error";
+  const isNote = hint.kind === "note";
 
   return (
     <div className="w-full">
-      <div
-        className={`rounded-2xl border bg-white p-2 shadow-builder transition-colors dark:bg-[#151D16] ${
-          isError
-            ? "border-coral-500 dark:border-coral-400"
-            : "border-sage-700/30 focus-within:border-sage-500 dark:border-sage-300/20 dark:focus-within:border-sage-300"
-        }`}
+      {/* Main input pill */}
+      <motion.div
+        layout
+        className={`hero-input-shell ${isError ? "is-error" : ""}`}
       >
-        <div className="flex items-center gap-2 p-2 sm:gap-3 sm:p-3">
-          <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sage-600 text-white sm:flex dark:bg-sage-200 dark:text-sage-950">
-            <Globe className="h-5 w-5" weight="duotone" />
-          </span>
+        <Globe
+          className="hidden h-5 w-5 shrink-0 text-[var(--text-subtle)] sm:block"
+          weight="duotone"
+        />
 
-          <div className="min-w-0 flex-1 px-1">
-            <label
-              htmlFor="hero-url"
-              className="block font-mono text-[10px] font-semibold tracking-[0.14em] text-sage-600 uppercase dark:text-sage-400"
-            >
-              Page URL
-            </label>
-            <input
-              id="hero-url"
-              type="text"
-              inputMode="url"
-              autoComplete="off"
-              placeholder="https://example.com/page"
-              value={values.url}
-              onChange={(e) => onChange({ url: e.target.value })}
-              onKeyDown={handleKeyDown}
-              aria-label="URL to audit"
-              aria-invalid={isError}
-              className="w-full bg-transparent py-0.5 text-lg font-medium text-sage-950 outline-none placeholder:text-sage-600 sm:text-xl dark:text-sage-50 dark:placeholder:text-sage-400"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            title="API keys and settings"
-            aria-label="API keys and settings"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sage-600 transition-colors hover:bg-sage-100 hover:text-sage-950 dark:text-sage-300 dark:hover:bg-sage-800"
-          >
-            <Faders className="h-5 w-5" weight="bold" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSubmit()}
-            disabled={!canSubmit}
-            className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-sage-600 px-5 text-sm font-bold text-white transition-all hover:bg-sage-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 sm:px-7 sm:text-base dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100"
-          >
-            {loading ? (
-              <>
-                <CircleNotch className="h-4 w-4 animate-spin" weight="bold" />
-                <span>Auditing…</span>
-              </>
-            ) : (
-              <>
-                <span>Audit</span>
-                <ArrowRight className="h-4 w-4" weight="bold" />
-              </>
-            )}
-          </button>
+        <div className="min-w-0 flex-1">
+          <label htmlFor="hero-url" className="sr-only">
+            Page URL to audit
+          </label>
+          <input
+            id="hero-url"
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            placeholder="Paste your URL - e.g. linear.app"
+            value={values.url}
+            onChange={(e) => onChange({ url: e.target.value })}
+            onKeyDown={handleKeyDown}
+            aria-label="URL to audit"
+            aria-invalid={isError}
+            className="w-full bg-transparent py-2 text-[15px] font-medium text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] sm:text-base"
+          />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-sage-700/15 px-4 py-2.5 dark:border-sage-300/15">
-          <p
-            role={isError ? "alert" : undefined}
-            className={`text-xs ${
-              isError
-                ? "font-semibold text-coral-700 dark:text-coral-300"
-                : hint.kind === "note"
-                  ? "font-medium text-sage-700 dark:text-sage-200"
-                  : "text-sage-600 dark:text-sage-400"
-            }`}
-          >
-            {hint.text}
-          </p>
+        <AnimatePresence mode="wait" initial={false}>
+          {loading ? (
+            <motion.button
+              key="loading"
+              type="button"
+              disabled
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="btn-primary pointer-events-none"
+              style={{ paddingLeft: "1.1rem", paddingRight: "1.1rem" }}
+            >
+              <CircleNotch className="h-4 w-4 animate-spin" weight="bold" />
+              <span>Auditing…</span>
+            </motion.button>
+          ) : (
+            <motion.button
+              key="submit"
+              type="button"
+              onClick={() => onSubmit()}
+              disabled={!canSubmit}
+              whileTap={{ scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="btn-primary"
+              style={{ paddingLeft: "1.1rem", paddingRight: "1.1rem" }}
+            >
+              <span>Audit</span>
+              <ArrowRight className="h-4 w-4" weight="bold" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Query row + hints */}
+      <motion.div
+        layout
+        className="mt-3 flex flex-wrap items-center justify-between gap-3 px-1"
+      >
+        <p
+          role={isError ? "alert" : undefined}
+          className={`text-[13px] leading-snug ${
+            isError
+              ? "font-medium text-[var(--fail)]"
+              : isNote
+                ? "font-medium text-[var(--text)]"
+                : "text-[var(--text-muted)]"
+          }`}
+        >
+          {hint.text}
+        </p>
+
+        <div className="flex items-center gap-1">
           {showQueryInput ? (
-            <span className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-xs">
-              <MagnifyingGlass className="h-4 w-4 shrink-0 text-sage-500" />
+            <motion.div
+              key="query"
+              layout
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--surface-border)] bg-[var(--surface-raised)] px-3 py-1.5 sm:min-w-[260px]"
+            >
+              <MagnifyingGlass
+                className="h-3.5 w-3.5 shrink-0 text-[var(--text-subtle)]"
+                weight="bold"
+              />
               <label htmlFor="hero-query" className="sr-only">
                 Target search query
               </label>
               <input
                 id="hero-query"
                 type="text"
-                placeholder="Target query — empty auto-derives"
+                placeholder="Target query - we'll auto-derive if empty"
                 value={values.query}
                 onChange={(e) => onChange({ query: e.target.value })}
                 onKeyDown={handleKeyDown}
-                className="w-full bg-transparent text-xs font-medium text-sage-900 outline-none placeholder:text-sage-600 dark:text-sage-100 dark:placeholder:text-sage-400"
+                className="w-full bg-transparent text-[12px] font-medium text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]"
               />
               <button
                 type="button"
@@ -206,37 +227,51 @@ export default function HeroChatInput({
                   onChange({ query: "" });
                   setShowQueryInput(false);
                 }}
-                className="shrink-0 text-xs font-semibold text-sage-600 underline-offset-2 hover:underline dark:text-sage-300"
+                aria-label="Clear target query"
+                className="shrink-0 text-[var(--text-subtle)] transition-colors hover:text-[var(--text)]"
               >
-                Clear
+                <X className="h-3.5 w-3.5" weight="bold" />
               </button>
-            </span>
+            </motion.div>
           ) : (
             <button
               type="button"
               onClick={() => setShowQueryInput(true)}
-              className="text-xs font-semibold text-sage-700 underline decoration-sage-400 underline-offset-4 hover:text-sage-950 dark:text-sage-300 dark:hover:text-sage-50"
+              className="chip"
             >
-              Add target query
+              <MagnifyingGlass className="h-3.5 w-3.5" weight="bold" />
+              <span>Add target query</span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            title="API keys and settings"
+            aria-label="API keys and settings"
+            className="chip"
+          >
+            <Faders className="h-3.5 w-3.5" weight="bold" />
+            <span className="hidden sm:inline">API keys</span>
+          </button>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.12em] text-sage-600 uppercase dark:text-sage-400">
-          Try live
+      {/* Sample prompt chips */}
+      <div className="mt-5 flex flex-wrap items-center gap-2 px-1">
+        <span className="mr-1 text-[13px] text-[var(--text-subtle)]">
+          Start with an example:
         </span>
         {SAMPLE_PROMPTS.map((sample) => (
-          <button
+          <motion.button
             key={sample.label}
             type="button"
             onClick={() => handleSelectSample(sample)}
             disabled={loading}
-            className="rounded-full border border-sage-700/25 bg-white px-3.5 py-1.5 text-xs font-semibold text-sage-900 transition-all hover:border-sage-600 hover:bg-sage-100 active:scale-[0.97] disabled:opacity-50 dark:border-sage-300/20 dark:bg-transparent dark:text-sage-100 dark:hover:bg-sage-900"
+            whileTap={{ scale: 0.96 }}
+            className="chip disabled:opacity-50"
           >
             {sample.label}
-          </button>
+          </motion.button>
         ))}
       </div>
     </div>

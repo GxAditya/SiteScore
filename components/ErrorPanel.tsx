@@ -47,13 +47,13 @@ function actionFor(code: string): ActionInfo {
     case "timeout":
       return {
         title: "Upstream timed out",
-        next: "The page or TinyFish took too long. Retry once; if it repeats, the page itself is too slow — that is itself a P1 finding (fetch latency).",
+        next: "The page or TinyFish took too long. Retry once; if it repeats, the page itself is too slow - that is itself a P1 finding (fetch latency).",
       };
     case "bot_blocked":
     case "fetch_error_bot_blocked":
       return {
         title: "Fetch blocked by bot protection",
-        next: "The server treated the fetch crawler as a bot. Allowlist well-behaved AI fetchers for this path and retry — AI assistants hit the same wall.",
+        next: "The server treated the fetch crawler as a bot. Allowlist well-behaved AI fetchers for this path and retry - AI assistants hit the same wall.",
       };
     case "login_required":
     case "fetch_error_login_required":
@@ -65,7 +65,7 @@ function actionFor(code: string): ActionInfo {
     case "fetch_error_empty_content":
       return {
         title: "Page returned empty content",
-        next: "Fetch succeeded but extracted nothing — likely a script-only page. Server-render the main content into the HTML and retry.",
+        next: "Fetch succeeded but extracted nothing - likely a script-only page. Server-render the main content into the HTML and retry.",
       };
     case "page_not_found":
     case "fetch_error_page_not_found":
@@ -79,7 +79,7 @@ function actionFor(code: string): ActionInfo {
     case "fetch_rejected":
       return {
         title: "TinyFish unavailable",
-        next: "The upstream API errored. Wait a moment and retry — nothing about your page can be concluded from this.",
+        next: "The upstream API errored. Wait a moment and retry - nothing about your page can be concluded from this.",
       };
     case "request_timeout":
       return {
