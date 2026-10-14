@@ -73,11 +73,11 @@ export function buildFixes(input: FixesInput): Fix[] {
     const after = candidateTitle(q, input.url);
     push(10, titleSt === "fail" ? "P0" : "P1", {
       priority: titleSt === "fail" ? "P0" : "P1",
-      title: facts.title ? `Rewrite <title> (${facts.titleLength} chars → ≤60)` : "Add the missing <title> tag (0 chars today)",
+      title: facts.title ? `Rewrite the <title> tag (${facts.titleLength} chars → under 60)` : "Add the missing <title> tag (0 chars today)",
       why: facts.title
-        ? `Measured title is ${facts.titleLength} chars ("${clip(facts.title, 70)}"), outside the 50–60 display band, so search rewrites it and AI citations quote an unpredictable string.`
-        : `Measured 0 <title> tags (0 chars): search and AI tools fall back to the raw URL "${clip(input.url, 70)}" for all ${facts.wordCount} extracted words.`,
-      how: `1. Edit <head>. 2. Set the title to exactly: ${after} (${after.length} chars). 3. Re-fetch and confirm title length reads 50–60 chars.`,
+        ? `Your title is ${facts.titleLength} characters ("${clip(facts.title, 70)}"), outside the 50–60 range that displays fully, so search engines rewrite it and AI tools quote an unpredictable string.`
+        : `The page has 0 <title> tags: search engines and AI tools fall back to the raw URL "${clip(input.url, 70)}" for all ${facts.wordCount} words on the page.`,
+      how: `1. Edit the <head> section. 2. Set the title to exactly: ${after} (${after.length} chars). 3. Fetch the page again and confirm the title reads 50–60 chars.`,
       codeBefore: facts.excerpts.titleTag || "<!-- no <title> tag found in <head> -->",
       codeAfter: `<title>${after}</title>`,
     });
@@ -89,11 +89,11 @@ export function buildFixes(input: FixesInput): Fix[] {
     const after = candidateMeta(q, facts);
     push(20, "P1", {
       priority: "P1",
-      title: facts.metaDescription ? `Rewrite meta description (${facts.metaDescriptionLength} chars → 120–160)` : "Add the missing meta description (0 chars today)",
+      title: facts.metaDescription ? `Rewrite the meta description (${facts.metaDescriptionLength} chars → 120–160)` : "Add the missing meta description (0 chars today)",
       why: facts.metaDescription
-        ? `Measured meta description is ${facts.metaDescriptionLength} chars, outside the 120–160 snippet band, so ${facts.wordCount}-word page shows a truncated or auto-picked snippet.`
-        : `Measured 0 meta description tags: the snippet for this ${facts.wordCount}-word page is auto-picked from body text with 0 query-term guarantees.`,
-      how: `1. Add/replace the tag in <head>. 2. Keep it ${after.length} chars (≤160). 3. Re-check that the snippet check reads ≥50% term coverage.`,
+        ? `Your meta description is ${facts.metaDescriptionLength} chars, outside the 120–160 range that shows fully, so this ${facts.wordCount}-word page displays a cut-off or auto-picked search preview.`
+        : `The page has 0 meta description tags: search picks the preview for this ${facts.wordCount}-word page from random body text, with 0 guarantee it matches what people search for.`,
+      how: `1. Add or replace the tag in the <head>. 2. Keep it ${after.length} chars (under 160). 3. Re-run the audit and confirm the preview check shows ≥50% term coverage.`,
       codeBefore: facts.excerpts.metaTag || "<!-- no meta[name=description] found -->",
       codeAfter: `<meta name="description" content="${after}">`,
     });
@@ -105,9 +105,9 @@ export function buildFixes(input: FixesInput): Fix[] {
     const after = capFirst(clip(q || facts.h1Texts[0] || "Page topic", 70));
     push(30, h1St === "fail" ? "P0" : "P1", {
       priority: h1St === "fail" ? "P0" : "P1",
-      title: facts.h1Count === 0 ? "Add the missing H1 (0 found)" : `Consolidate ${facts.h1Count} H1s into 1`,
-      why: `Measured ${facts.h1Count} <h1> tags (expected exactly 1): with ${facts.wordCount} words and ${facts.h1Count === 0 ? "no" : facts.h1Count} H1 topic signal(s), AI extractors must guess the topic.`,
-      how: `1. Keep exactly 1 <h1> containing the target query. 2. Demote the other ${Math.max(facts.h1Count - 1, 0)} H1s to <h2>. 3. Re-parse and confirm h1Count reads 1.`,
+      title: facts.h1Count === 0 ? "Add the missing H1 heading (0 found)" : `Merge ${facts.h1Count} H1 headings into 1`,
+      why: `The page has ${facts.h1Count} <h1> tags (it should have exactly 1): with ${facts.wordCount} words and ${facts.h1Count === 0 ? "no" : `only ${facts.h1Count}`} main heading signal(s), AI tools must guess what the page is about.`,
+      how: `1. Keep exactly 1 <h1> that contains the search phrase. 2. Change the other ${Math.max(facts.h1Count - 1, 0)} H1s to <h2>. 3. Re-run the audit and confirm the H1 count reads 1.`,
       codeBefore: facts.excerpts.h1Tag || "<!-- no <h1> found in body -->",
       codeAfter: `<h1>${after}</h1>`,
     });
@@ -118,11 +118,11 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (h2St !== "pass") {
     push(40, h2St === "fail" ? "P1" : "P2", {
       priority: h2St === "fail" ? "P1" : "P2",
-      title: facts.headingSkipsLevels ? "Repair skipped heading levels (e.g. H1→H3)" : `Add H2 sections (0 found across ${facts.wordCount} words)`,
+      title: facts.headingSkipsLevels ? "Fix skipped heading levels (e.g. H1→H3)" : `Add H2 sections (0 found across ${facts.wordCount} words)`,
       why: facts.headingSkipsLevels
-        ? `Measured heading levels skip (e.g. H1→H3 jump among ${facts.h1Count + facts.h2Count} top-level headings), so section parsers merge ${facts.wordCount} words into fewer citable chunks.`
-        : `Measured 0 <h2> tags across ${facts.wordCount} words: AI answers receive 1 undifferentiated block instead of citable sections.`,
-      how: "1. Split the body into 3–5 sections, one <h2> each (≈150–250 words per section). 2. Never jump levels (H1→H2→H3). 3. Re-parse and confirm h2Count ≥3 with 0 skips.",
+        ? `The heading levels jump around (e.g. H1 straight to H3 among ${facts.h1Count + facts.h2Count} top-level headings), so tools that split pages into sections merge your ${facts.wordCount} words into fewer quotable passages.`
+        : `The page has 0 <h2> tags across ${facts.wordCount} words: AI answers receive 1 big block of text instead of clear sections they can quote.`,
+      how: "1. Split the body into 3–5 sections with one <h2> each (about 150–250 words per section). 2. Never skip levels (H1→H2→H3). 3. Re-run the audit and confirm at least 3 H2s with 0 skips.",
       codeBefore: facts.excerpts.h1Tag || "<!-- body has headings but no <h2> structure -->",
       codeAfter: `<h2>${capFirst(clip(q || "Key section", 60))}</h2>\n<p>150–250 words answering one sub-question…</p>\n<h2>Next sub-question</h2>`,
     });
@@ -133,10 +133,10 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (wordsSt !== "pass") {
     push(50, wordsSt === "fail" ? "P0" : "P1", {
       priority: wordsSt === "fail" ? "P0" : "P1",
-      title: `Expand extractable text (${facts.wordCount} words → ≥600)`,
-      why: `Measured ${facts.wordCount} words of extractable text (${wordsSt === "fail" ? "under the 300-word thin-content bar" : "under the 600-word citation bar"}): AI answers will cite longer same-intent pages first.`,
-      how: `1. Add ${Math.max(600 - facts.wordCount, 0)}+ words: definition, 3–5 H2 sections, FAQ (4–6 Q&As). 2. Put the query answer in the first 100 words. 3. Re-fetch markdown and confirm wordCount ≥600.`,
-      codeBefore: `<!-- current extraction: ${facts.wordCount} words, excerpt: "${clip(facts.textExcerpt, 120)}" -->`,
+      title: `Add more readable text (${facts.wordCount} words → 600+)`,
+      why: `The fetch read only ${facts.wordCount} words (${wordsSt === "fail" ? "under the 300-word thin-content limit" : "under the 600-word bar AI answers prefer"}): AI answers will quote longer pages on the same topic first.`,
+      how: `1. Add ${Math.max(600 - facts.wordCount, 0)}+ words: a definition, 3–5 H2 sections, and an FAQ with 4–6 questions. 2. Put the answer to the search phrase in the first 100 words. 3. Fetch the page again and confirm the word count is 600+.`,
+      codeBefore: `<!-- what a fetch reads today: ${facts.wordCount} words, starts: "${clip(facts.textExcerpt, 120)}" -->`,
       codeAfter: `## ${capFirst(clip(q || "Topic", 60))} - quick answer\n<100-word direct answer with the query terms>\n\n## FAQ\n### Q1…?  A… (40–60 words each, 4–6 Q&As)`,
     });
   }
@@ -147,9 +147,9 @@ export function buildFixes(input: FixesInput): Fix[] {
     const afterTitle = candidateTitle(q, input.url);
     push(60, ogSt === "fail" ? "P1" : "P2", {
       priority: ogSt === "fail" ? "P1" : "P2",
-      title: `Complete Open Graph tags (${facts.ogPresentCount}/3 present)`,
-      why: `Measured ${facts.ogPresentCount}/3 OG tags (title=${facts.ogTitle ? 1 : 0}, description=${facts.ogDescription ? 1 : 0}, image=${facts.ogImage ? 1 : 0}): link previews and AI metadata fall back to guessing on a ${facts.wordCount}-word page.`,
-      how: "1. Add all 3 tags in <head> with absolute URLs. 2. Use a 1200×630 image. 3. Validate with any OG debugger (3/3 green).",
+      title: `Complete the Open Graph tags (${facts.ogPresentCount}/3 present)`,
+      why: `The page has ${facts.ogPresentCount}/3 Open Graph tags (title=${facts.ogTitle ? 1 : 0}, description=${facts.ogDescription ? 1 : 0}, image=${facts.ogImage ? 1 : 0}): when the link is shared, the preview card and AI tools have to guess from a ${facts.wordCount}-word page.`,
+      how: "1. Add all 3 tags in the <head> with full URLs. 2. Use a 1200×630 image. 3. Check with any free link-preview tester (3/3 present).",
       codeBefore: facts.excerpts.ogTags || "<!-- 0 og:* meta tags found -->",
       codeAfter: `<meta property="og:title" content="${afterTitle}">\n<meta property="og:description" content="${candidateMeta(q, facts)}">\n<meta property="og:image" content="https://${siteName(input.url)}/og-cover.png">`,
     });
@@ -160,11 +160,11 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (canSt !== "pass") {
     push(70, "P1", {
       priority: "P1",
-      title: facts.canonical ? `Make canonical absolute ("${clip(facts.canonical, 50)}" is relative)` : "Add the missing canonical (0 tags today)",
+      title: facts.canonical ? `Use the full URL in the canonical tag ("${clip(facts.canonical, 50)}" is relative)` : "Add the missing canonical tag (0 tags today)",
       why: facts.canonical
-        ? `Measured 1 relative canonical ("${clip(facts.canonical, 70)}"): scrapers and mirrors resolve it inconsistently, splitting signals for this ${facts.wordCount}-word page.`
-        : `Measured 0 canonical tags: every URL variant (?utm, trailing slash) competes with ${clip(input.url, 70)} for the same ${facts.wordCount} words.`,
-      how: "1. Emit one absolute canonical on every variant URL. 2. Include it in the sitemap. 3. Re-crawl and confirm 1 absolute canonical.",
+        ? `The page has 1 relative canonical ("${clip(facts.canonical, 70)}"): copied or mirrored pages read it differently, splitting ranking credit for this ${facts.wordCount}-word page.`
+        : `The page has 0 canonical tags: every version of the URL (tracking parameters, trailing slash) competes with ${clip(input.url, 70)} for the same ${facts.wordCount} words.`,
+      how: "1. Put one canonical with the full URL on every version of the page. 2. List that URL in your sitemap. 3. Re-run the audit and confirm 1 full-URL canonical.",
       codeBefore: facts.excerpts.canonicalTag || "<!-- no link[rel=canonical] found -->",
       codeAfter: `<link rel="canonical" href="${clip(input.finalUrl ?? input.url, 100)}">`,
     });
@@ -174,9 +174,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (statusOf(checks, "r-lang") !== "pass") {
     push(80, "P2", {
       priority: "P2",
-      title: "Declare <html lang> (0 lang attributes today)",
-      why: `Measured 0 lang attributes on <html> across ${facts.wordCount} extracted words: tokenizers and screen readers must guess the language.`,
-      how: '1. Set <html lang="en"> (or the correct BCP-47 code). 2. Validate 1 lang attribute present.',
+      title: "Set the page language (0 lang attributes today)",
+      why: `The <html> tag has 0 lang attributes, across ${facts.wordCount} words of text: screen readers and search tools must guess the language.`,
+      how: '1. Set <html lang="en"> (or the right code for your language). 2. Confirm the lang attribute is present.',
       codeBefore: "<html>",
       codeAfter: '<html lang="en">',
     });
@@ -187,9 +187,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (altSt !== "pass" && facts.altCoveragePct !== null) {
     push(90, altSt === "fail" ? "P1" : "P2", {
       priority: altSt === "fail" ? "P1" : "P2",
-      title: `Label ${facts.imgTotal - facts.imgWithAlt} unlabeled images (${facts.altCoveragePct}% alt coverage)`,
-      why: `Measured ${facts.imgWithAlt}/${facts.imgTotal} <img> tags with non-empty alt (${facts.altCoveragePct}% coverage; pass ≥90%): text-only AI fetchers skip the other ${facts.imgTotal - facts.imgWithAlt} images entirely.`,
-      how: `1. Write literal alt for each of the ${facts.imgTotal - facts.imgWithAlt} unlabeled images (<125 chars, query-adjacent nouns). 2. Empty alt only for decoration. 3. Re-parse and confirm 100% coverage.`,
+      title: `Add alt text to ${facts.imgTotal - facts.imgWithAlt} unlabeled images (${facts.altCoveragePct}% covered)`,
+      why: `Only ${facts.imgWithAlt}/${facts.imgTotal} images have alt text (${facts.altCoveragePct}% coverage; pass at 90%+): search and text-only AI tools skip the other ${facts.imgTotal - facts.imgWithAlt} images entirely.`,
+      how: `1. Describe each of the ${facts.imgTotal - facts.imgWithAlt} unlabeled images plainly in its alt text (under 125 characters). 2. Use empty alt only for purely decorative images. 3. Re-run the audit and confirm 100% coverage.`,
       codeBefore: facts.excerpts.imgWithoutAltTag || `<!-- ${facts.imgTotal - facts.imgWithAlt} <img> without alt -->`,
       codeAfter: facts.excerpts.imgWithoutAltTag
         ? facts.excerpts.imgWithoutAltTag.replace(/alt\s*=\s*"[^"]*"/, `alt="${capFirst(clip(q || "Topic", 50))} illustration"`).replace(/<img(?![^>]*alt=)/, `<img alt="${capFirst(clip(q || "Topic", 50))} illustration"`)
@@ -201,9 +201,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (statusOf(checks, "r-schema") !== "pass") {
     push(100, "P1", {
       priority: "P1",
-      title: `Add JSON-LD structured data (0 valid blocks today)`,
-      why: `Measured ${facts.jsonLdValid} valid JSON-LD blocks out of ${facts.jsonLdBlocks} script tags on a ${facts.wordCount}-word page: answer engines get prose only and cite structured competitors first.`,
-      how: "1. Paste one Article/FAQPage block. 2. Validate with the Rich Results Test (1 valid block). 3. Keep headline/datePublished accurate.",
+      title: "Add JSON-LD structured data (0 valid blocks today)",
+      why: `The page has ${facts.jsonLdValid} valid JSON-LD blocks out of ${facts.jsonLdBlocks} script tags on a ${facts.wordCount}-word page: AI tools get plain prose only and quote structured competitors first.`,
+      how: "1. Paste one Article or FAQPage block into the page. 2. Check it with Google's Rich Results Test (1 valid block). 3. Keep the headline and publish date accurate.",
       codeBefore: facts.excerpts.jsonLdSample || '<!-- 0 script[type="application/ld+json"] found -->',
       codeAfter: `<script type="application/ld+json">\n{"@context":"https://schema.org","@type":"Article","headline":"${clip(facts.title || q || "Page title", 80)}","author":{"@type":"Person","name":"${clip(facts.metaAuthor || "Author name", 40)}"},"datePublished":"${new Date().toISOString().slice(0, 10)}"}\n</script>`,
     });
@@ -214,9 +214,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (authSt !== "pass") {
     push(110, "P2", {
       priority: "P2",
-      title: "Surface author + publish date signals",
-      why: `Measured author signal and date signal partially missing on a ${facts.wordCount}-word page (meta author=${facts.metaAuthor ? `"${clip(facts.metaAuthor, 30)}"` : "absent"}, published meta=${facts.hasPublishedMeta ? "present" : "absent"}): citations and freshness ranking discount anonymous, undated content.`,
-      how: "1. Add visible byline + <time datetime>. 2. Mirror in meta author + article:published_time. 3. Re-check authorship reads 2/2.",
+      title: "Show the author and publish date",
+      why: `This ${facts.wordCount}-word page is missing author or date signals (meta author=${facts.metaAuthor ? `"${clip(facts.metaAuthor, 30)}"` : "absent"}, published date=${facts.hasPublishedMeta ? "present" : "absent"}): AI tools and freshness ranking trust signed, dated content more.`,
+      how: "1. Add a visible author name and publish date. 2. Mirror them in the meta author and article:published_time tags. 3. Re-run the audit and confirm both signals are found (2/2).",
       codeBefore: facts.metaAuthor ? `<meta name="author" content="${clip(facts.metaAuthor, 50)}">` : "<!-- no author/date signals found -->",
       codeAfter: `<meta name="author" content="${clip(facts.metaAuthor || "Author Name", 40)}">\n<meta property="article:published_time" content="${new Date().toISOString().slice(0, 10)}">`,
     });
@@ -227,9 +227,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (idxSt !== "pass") {
     push(5, idxSt === "fail" ? "P0" : "P1", {
       priority: idxSt === "fail" ? "P0" : "P1",
-      title: idxSt === "fail" ? "Get the page indexed (0 exact-URL site: hits)" : "Strengthen page-level indexation (domain indexed, URL not)",
-      why: `Measured 0 exact-URL matches in the site: probe for ${clip(input.url, 70)}: the ${facts.wordCount}-word page cannot rank anywhere until the exact URL is indexed.`,
-      how: "1. Submit the exact URL in Search Console. 2. Link it from 2–3 indexed internal pages. 3. Include it in the XML sitemap. 4. Re-run the site: probe until 1 exact match.",
+      title: idxSt === "fail" ? "Get the page into the search index (0 exact-URL matches)" : "Get this exact page indexed (the domain is, the page isn't)",
+      why: `The site: search for ${clip(input.url, 70)} returned 0 exact matches: this ${facts.wordCount}-word page cannot rank anywhere until its exact URL is in the index.`,
+      how: "1. Submit the exact URL in Google Search Console. 2. Link to it from 2–3 pages that are already indexed. 3. Add it to your XML sitemap. 4. Re-run the site: check until it shows 1 exact match.",
       codeBefore: facts.excerpts.canonicalTag || "<!-- no canonical to consolidate index signals -->",
       codeAfter: `<!-- sitemap entry -->\n<url><loc>${clip(input.finalUrl ?? input.url, 100)}</loc><lastmod>${new Date().toISOString().slice(0, 10)}</lastmod></url>`,
     });
@@ -245,10 +245,10 @@ export function buildFixes(input: FixesInput): Fix[] {
     });
     push(6, rankSt === "fail" ? "P0" : "P1", {
       priority: rankSt === "fail" ? "P0" : "P1",
-      title: `Win a top-10 slot for "${clip(q, 50)}" (${competitors.length} competitors visible, you are unranked)`,
-      why: `Measured 0 ranking hits for this URL across the observed results while ${competitors.length} same-intent competitors rank for "${clip(q, 50)}" - the ${facts.wordCount}-word page earns 0 query clicks.`,
-      how: `1. Mirror the top-3 competitor subtopics as H2s. 2. Answer the query in the first 100 words. 3. Ship the title/meta rewrites above (they carry ${tokenizeLen(q)} query terms). 4. Re-probe ranking weekly.`,
-      codeBefore: `<!-- SERP today: unranked for "${clip(q, 50)}"; page title ${facts.titleLength} chars, meta ${facts.metaDescriptionLength} chars -->`,
+      title: `Win a top-10 spot for "${clip(q, 50)}" (${competitors.length} competitors show, you don't)`,
+      why: `The URL appeared 0 times in the observed search results while ${competitors.length} competitors rank for "${clip(q, 50)}" - so this ${facts.wordCount}-word page earns 0 clicks from that search.`,
+      how: `1. Cover the top 3 competitors' subtopics as your own H2 sections. 2. Answer the search phrase in the first 100 words. 3. Apply the title and meta description rewrites above (they carry ${tokenizeLen(q)} of the search terms). 4. Re-check the ranking weekly.`,
+      codeBefore: `<!-- search results today: unranked for "${clip(q, 50)}"; page title ${facts.titleLength} chars, meta description ${facts.metaDescriptionLength} chars -->`,
       codeAfter: `<title>${candidateTitle(q, input.url)}</title>\n<meta name="description" content="${candidateMeta(q, facts)}">`,
     });
   }
@@ -258,9 +258,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (snipSt !== "pass" && titleSt === "pass" && metaSt === "pass") {
     push(25, "P1", {
       priority: "P1",
-      title: "Carry query terms in the intro paragraph",
-      why: `Measured snippet term coverage below 50% for "${clip(q, 50)}" even though the ${facts.titleLength}-char title and ${facts.metaDescriptionLength}-char meta pass: the body intro never states the query plainly across ${facts.wordCount} words.`,
-      how: "1. Open with a 40–60-word answer sentence containing every query term. 2. Repeat the primary term once per H2. 3. Re-check coverage reads ≥50%.",
+      title: "Use the search terms in your first paragraph",
+      why: `Search preview term coverage is below 50% for "${clip(q, 50)}" even though the ${facts.titleLength}-char title and ${facts.metaDescriptionLength}-char meta description pass: the opening paragraph never states the search phrase plainly across ${facts.wordCount} words.`,
+      how: "1. Open with a 40–60-word answer that uses every search term. 2. Repeat the main term once per H2 section. 3. Re-run the audit and confirm coverage reads ≥50%.",
       codeBefore: `<!-- first ~200 chars today: "${clip(facts.textExcerpt, 120)}" -->`,
       codeAfter: `<p>${capFirst(clip(q, 80))} - direct 40–60-word answer using every query term verbatim…</p>`,
     });
@@ -278,8 +278,8 @@ export function buildFixes(input: FixesInput): Fix[] {
     push(55, compSt === "fail" ? "P1" : "P2", {
       priority: compSt === "fail" ? "P1" : "P2",
       title: `Close the content gap vs ${competitors.length} ranking competitors`,
-      why: `Measured ${competitors.length} same-intent competitors in the SERP${names ? ` (e.g. ${names})` : ""} against this ${facts.wordCount}-word page with ${facts.h2Count} H2 sections: thinner, flatter pages lose the click.`,
-      how: `1. Cover each competitor's subtopic as an H2 with 150–250 words. 2. Add a comparison table + FAQ (lifts ${facts.wordCount} words past 600 with structure). 3. Earn 1–2 internal links from indexed pages.`,
+      why: `The search results show ${competitors.length} competitors${names ? ` (e.g. ${names})` : ""} against this ${facts.wordCount}-word page with ${facts.h2Count} H2 sections: thinner, flatter pages lose the click.`,
+      how: `1. Cover each competitor's subtopic as an H2 section with 150–250 words. 2. Add a comparison table and an FAQ (pushes this ${facts.wordCount}-word page past 600 with real structure). 3. Get 1–2 links from your own indexed pages.`,
       codeBefore: `<!-- today: ${facts.wordCount} words, ${facts.h2Count} H2s vs ${competitors.length} structured competitors -->`,
       codeAfter: `<h2>What the top results cover that this page lacks</h2>\n<table><tr><th>Subtopic</th><th>Our answer</th></tr><tr><td>…</td><td>150–250 words</td></tr></table>`,
     });
@@ -290,9 +290,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (redSt !== "pass") {
     push(120, redSt === "fail" ? "P0" : "P1", {
       priority: redSt === "fail" ? "P0" : "P1",
-      title: redSt === "fail" ? "Eliminate the cross-host redirect hop" : "Collapse the same-host redirect hop",
-      why: `Measured 1 redirect hop (${clip(input.url, 60)} → ${clip(input.finalUrl ?? input.url, 60)}): every crawler and AI fetcher pays the hop and split signals.`,
-      how: "1. Point all internal links, sitemap and canonical at the final URL. 2. Keep the 301 for 6–12 months, then audit for chains (target 0 hops).",
+      title: redSt === "fail" ? "Remove the redirect to a different domain" : "Remove the extra redirect hop",
+      why: `The page takes 1 redirect hop (${clip(input.url, 60)} → ${clip(input.finalUrl ?? input.url, 60)}): every visitor and AI tool pays the delay, and ranking credit splits across 2 URLs.`,
+      how: "1. Point all internal links, the sitemap, and the canonical at the final URL. 2. Keep the 301 redirect for 6–12 months, then check for leftover chains (target: 0 hops).",
       codeBefore: `<!-- links/sitemap point at ${clip(input.url, 70)} (1 hop away) -->`,
       codeAfter: `<link rel="canonical" href="${clip(input.finalUrl ?? input.url, 100)}">`,
     });
@@ -305,11 +305,11 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (latSt !== "pass") {
     push(130, latSt === "fail" ? "P1" : "P2", {
       priority: latSt === "fail" ? "P1" : "P2",
-      title: latSt === "fail" ? "Bring fetch latency under 4s (currently >8s)" : "Trim fetch latency toward <2.5s (currently >4s)",
-      why: `Measured fetch latency ${latSt === "fail" ? "above 8000ms" : "between 4000–8000ms"} (pass ≤4000ms): slow fetches get truncated by AI tools and burn crawl budget on a ${facts.wordCount}-word page.`,
-      how: "1. Compress/AVIF images, cut render-blocking JS. 2. Cache HTML at the edge (live fetch still hits origin - keep TTFB <600ms). 3. Re-fetch and confirm ≤4000ms.",
-      codeBefore: "<!-- no resource hints or image budget enforced -->",
-      codeAfter: '<link rel="preload" as="image" href="/og-cover.avif">\n<!-- budget: TTFB <600ms, full fetch ≤4000ms -->',
+      title: latSt === "fail" ? "Speed up page loading (currently over 8s)" : "Speed up page loading (currently over 4s)",
+      why: `The fetch took ${latSt === "fail" ? "over 8000ms" : "between 4000–8000ms"} (pass at ≤4000ms): slow pages get cut off by AI tools and waste search engine crawling time on a ${facts.wordCount}-word page.`,
+      how: "1. Compress images, remove JavaScript that blocks rendering. 2. Cache the HTML closer to visitors - the server's first response should stay under 600ms. 3. Fetch again and confirm it loads in under 4000ms.",
+      codeBefore: "<!-- no load-time limits set for images or scripts -->",
+      codeAfter: '<link rel="preload" as="image" href="/og-cover.avif">\n<!-- budget: server response <600ms, full load under 4000ms -->',
     });
   }
 
@@ -317,9 +317,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (statusOf(checks, "t-viewport") !== "pass") {
     push(140, "P1", {
       priority: "P1",
-      title: "Add the viewport meta (0 tags today)",
-      why: `Measured 0 viewport meta tags: mobile rendering breaks on a ${facts.wordCount}-word page and mobile-first indexing degrades.`,
-      how: "1. Add the tag below. 2. Verify no horizontal scroll at 360px width.",
+      title: "Add the viewport tag (0 tags today)",
+      why: `The page has 0 viewport meta tags: it renders badly on phones across its ${facts.wordCount} words, and Google's mobile-first search downgrades it.`,
+      how: "1. Add the tag below to the <head>. 2. Check the page on a narrow phone screen (360px) with no side-scrolling.",
       codeBefore: "<!-- no meta[name=viewport] found -->",
       codeAfter: '<meta name="viewport" content="width=device-width, initial-scale=1">',
     });
@@ -329,9 +329,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (statusOf(checks, "t-robots") !== "pass") {
     push(1, "P0", {
       priority: "P0",
-      title: `Remove the noindex directive ("${clip(facts.robotsMeta ?? "", 50)}")`,
-      why: `Measured robots meta "${clip(facts.robotsMeta ?? "", 60)}" with 1 blocking directive: search is explicitly told to drop this ${facts.wordCount}-word page.`,
-      how: "1. Delete the noindex tag (or flip to index, follow). 2. Check X-Robots-Tag headers too. 3. Re-crawl and confirm 0 blocking directives.",
+      title: `Remove the noindex tag ("${clip(facts.robotsMeta ?? "", 50)}")`,
+      why: `The robots meta tag "${clip(facts.robotsMeta ?? "", 60)}" contains 1 blocking directive: you are explicitly telling search engines to drop this ${facts.wordCount}-word page.`,
+      how: "1. Delete the noindex tag (or change it to index, follow). 2. Check your server headers for X-Robots-Tag too. 3. Re-run the audit and confirm 0 blocking directives.",
       codeBefore: facts.excerpts.robotsTag || `<!-- robots meta: "${clip(facts.robotsMeta ?? "", 60)}" -->`,
       codeAfter: '<meta name="robots" content="index, follow, max-image-preview:large">',
     });
@@ -342,9 +342,9 @@ export function buildFixes(input: FixesInput): Fix[] {
   if (err && statusOf(checks, "t-thin-risk") !== "pass") {
     push(2, "P0", {
       priority: "P0",
-      title: `Unblock AI fetchers (fetch error: ${err})`,
-      why: `Measured fetch error "${err}" with only ${facts.wordCount} extracted words: crawlers and AI tools see the same wall, so 0 words are citable.`,
-      how: "1. Allowlist major AI/search crawler user-agents (or serve them the same HTML). 2. Remove login-gating for this public URL. 3. Re-fetch until 0 errors and wordCount ≥300.",
+      title: `Let AI and search tools read the page (fetch error: ${err})`,
+      why: `The fetch returned the error "${err}" and only ${facts.wordCount} words were readable: search engines and AI tools hit the same wall, so 0 words can be quoted.`,
+      how: "1. Allow well-known AI and search bots through your bot protection (or serve them the same HTML). 2. Remove the login requirement from this public URL. 3. Re-run the audit until there are 0 errors and at least 300 words are readable.",
       codeBefore: `<!-- fetch returns error "${err}" for ${clip(input.url, 70)} -->`,
       codeAfter: "<!-- fetch returns HTTP 200 with full HTML, 0 bot challenges for public pages -->",
     });
@@ -362,45 +362,45 @@ export function buildFixes(input: FixesInput): Fix[] {
     const opps: Fix[] = [
       {
         priority: "P2",
-        title: `Add FAQ schema to win AI-answer citations (${facts.jsonLdValid} structured blocks today)`,
-        why: `Measured ${facts.jsonLdValid} valid JSON-LD blocks on a ${facts.wordCount}-word page with ${facts.h2Count} H2s: the Q&A content exists but has 0 typed hooks for answer engines.`,
-        how: "1. Append one FAQPage block with 4–6 real Q&As from the page. 2. Validate (Rich Results Test: +1 valid block).",
+        title: `Add FAQ structured data to win AI-answer citations (${facts.jsonLdValid} structured blocks today)`,
+        why: `The page has ${facts.jsonLdValid} valid JSON-LD blocks on a ${facts.wordCount}-word page with ${facts.h2Count} H2s: the questions and answers exist, but carry 0 labels that AI tools can quote directly.`,
+        how: "1. Add one FAQPage block with 4–6 real Q&As from the page. 2. Check it with Google's Rich Results Test (+1 valid block).",
         codeBefore: facts.excerpts.jsonLdSample || '<!-- 0 FAQPage blocks -->',
         codeAfter: `<script type="application/ld+json">\n{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Q1?","acceptedAnswer":{"@type":"Answer","text":"40–60-word answer"}}]}\n</script>`,
       },
       {
         priority: "P2",
-        title: `Strengthen internal links (${facts.internalLinkCount}/${facts.linkTotal} links internal)`,
-        why: `Measured ${facts.internalLinkCount} internal out of ${facts.linkTotal} total links: crawl depth and indexation speed scale with internal-link count, currently ${facts.internalLinkCount}.`,
-        how: `1. Add 3–5 contextual internal links from indexed hub pages. 2. Link out to 2–3 related pages from this one. 3. Re-parse and confirm internalLinkCount ≥${facts.internalLinkCount + 3}.`,
+        title: `Add more internal links (${facts.internalLinkCount}/${facts.linkTotal} links point to your own pages)`,
+        why: `The page has ${facts.internalLinkCount} internal links out of ${facts.linkTotal} total: search engines discover and index pages faster when more internal links point to them (currently ${facts.internalLinkCount}).`,
+        how: `1. Add 3–5 links from your main pages that already get traffic to this one. 2. Link from this page to 2–3 related pages. 3. Re-run the audit and confirm at least ${facts.internalLinkCount + 3} internal links.`,
         codeBefore: `<!-- today: ${facts.internalLinkCount} internal / ${facts.linkTotal} total links -->`,
         codeAfter: `<a href="/related-topic">Related topic (descriptive anchor, 3–5 words)</a>`,
       },
       ...(facts.imgTotal > 0
         ? [{
           priority: "P2" as FixPriority,
-          title: `Enrich image alt text (${facts.imgWithAlt}/${facts.imgTotal} labeled)`,
-          why: `Measured ${facts.imgWithAlt}/${facts.imgTotal} images labeled: the remaining ${facts.imgTotal - facts.imgWithAlt} images contribute 0 words to text-only AI extraction.`,
-          how: "1. Give each image a literal 5–12-word alt. 2. Front-load the distinguishing noun. 3. Re-parse to 100% coverage.",
+          title: `Improve image alt text (${facts.imgWithAlt}/${facts.imgTotal} labeled)`,
+          why: `Only ${facts.imgWithAlt}/${facts.imgTotal} images are labeled: the remaining ${facts.imgTotal - facts.imgWithAlt} images contribute 0 words for search and AI tools that read text only.`,
+          how: "1. Describe each image plainly in 5–12 words of alt text. 2. Put the key subject first. 3. Re-run the audit until coverage is 100%.",
           codeBefore: facts.excerpts.imgWithoutAltTag || `<!-- ${facts.imgTotal - facts.imgWithAlt} unlabeled <img> -->`,
           codeAfter: `<img src="…" alt="${capFirst(clip(q || "Topic", 40))} - specific visual detail in 5–12 words">`,
         }]
         : []),
       {
         priority: "P2",
-        title: "Tighten snippet click-through on the current title",
-        why: `Measured title ${facts.titleLength} chars and meta ${facts.metaDescriptionLength} chars already in band: the next lever is CTR wording, worth testing once per ${facts.wordCount}-word page per quarter.`,
-        how: "1. A/B the title verb (guide vs tutorial vs examples). 2. Add one number or year to the meta. 3. Track CTR 4 weeks, keep the winner.",
+        title: "Test better title wording to earn more clicks",
+        why: `The title (${facts.titleLength} chars) and meta description (${facts.metaDescriptionLength} chars) are already a good length: the next lever is wording that gets more clicks - worth testing once per quarter on this ${facts.wordCount}-word page.`,
+        how: "1. Try 2 versions of the title (e.g. 'guide' vs 'tutorial' vs 'examples'). 2. Add one number or year to the meta description. 3. Track clicks for 4 weeks and keep the winner.",
         codeBefore: facts.excerpts.titleTag || "<!-- title tag -->",
         codeAfter: `<title>${candidateTitle(q, input.url)}</title> <!-- variant: prepend a number, e.g. "7 " if listicle -->`,
       },
       {
         priority: "P2",
-        title: "Set a measurable performance budget",
-        why: `Measured fetch on a ${facts.wordCount}-word, ${facts.imgTotal}-image page: without a budget, latency drifts back above the 4000ms pass line.`,
-        how: "1. Budget: TTFB <600ms, images <200KB each, JS <170KB. 2. Alert when any fetch exceeds 4000ms. 3. Re-verify monthly.",
-        codeBefore: "<!-- no performance budget enforced -->",
-        codeAfter: "<!-- budget: TTFB <600ms · images <200KB · JS <170KB · fetch ≤4000ms -->",
+        title: "Set a measurable page-speed budget",
+        why: `The fetch measured a ${facts.wordCount}-word, ${facts.imgTotal}-image page: without a fixed budget, load time drifts back above the 4000ms pass line.`,
+        how: "1. Budget: server responds under 600ms, images under 200KB each, JavaScript under 170KB. 2. Get an alert when any load exceeds 4000ms. 3. Re-check monthly.",
+        codeBefore: "<!-- no page-speed limits set -->",
+        codeAfter: "<!-- budget: server response <600ms · images <200KB · JS <170KB · full load under 4000ms -->",
       },
     ];
     for (const opp of opps) {

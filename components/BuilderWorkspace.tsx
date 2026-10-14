@@ -126,7 +126,7 @@ export default function BuilderWorkspace({
             onClick={onRetry}
             disabled={loading}
             aria-label="Re-run audit"
-            title="Re-run live audit"
+            title="Run the audit again"
             className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-sage-200/80 bg-white/60 text-sage-700 transition-colors hover:border-sage-400 hover:bg-sage-100 hover:text-sage-950 disabled:opacity-40 dark:border-sage-800 dark:bg-sage-950/60 dark:text-sage-300 dark:hover:border-sage-600 dark:hover:bg-sage-900"
           >
             <ArrowClockwise className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} weight="bold" />

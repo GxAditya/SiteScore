@@ -129,7 +129,7 @@ export default function ScoreGauge({
                 aria-hidden="true"
                 className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sage-500 dark:bg-sage-300"
               />
-              Live Probe (ttl=0)
+              Fetched Fresh (not cached)
             </span>
             <time
               dateTime={fetchedAt}
@@ -159,12 +159,12 @@ export default function ScoreGauge({
               className="h-4 w-4 shrink-0 text-sage-400 dark:text-sage-500"
               aria-hidden="true"
             />
-            <span>Target query:</span>
+            <span>Target search phrase:</span>
             <span className="font-semibold text-sage-950 dark:text-sage-100">
               &ldquo;{query}&rdquo;
             </span>
-            <span className="rounded-full bg-sage-100 px-2 py-0.5 font-mono text-[11px] text-sage-700 dark:bg-sage-900/60 dark:text-sage-400">
-              {querySource === "auto" ? "querySource:auto" : "querySource:user"}
+            <span className="rounded-full bg-sage-100 px-2 py-0.5 text-[11px] text-sage-700 dark:bg-sage-900/60 dark:text-sage-400">
+              {querySource === "auto" ? "detected from the page" : "you typed it"}
             </span>
           </p>
 

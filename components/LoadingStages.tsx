@@ -1,9 +1,9 @@
 import { motion, useReducedMotion } from "motion/react";
 
 const STAGES = [
-  "Fetching live page with TinyFish (ttl=0)…",
-  "Evaluating readability, structure & metadata…",
-  "Probing search indexation & SERP rankings…",
+  "Fetching the page fresh with TinyFish (no cached copy)…",
+  "Checking readability, structure & metadata…",
+  "Checking how it shows up in search results…",
 ] as const;
 
 const PROGRESS = [0.35, 0.7, 0.95];
@@ -116,7 +116,7 @@ export default function LoadingStages({ stage }: { stage: number }) {
         })}
       </ol>
       <p className="mt-4 text-[11px] text-sage-500 dark:text-sage-400">
-        Live audits only (ttl=0, no saved cache). Search & fetch probes run concurrently.
+        Every audit reads fresh content (no saved copies). Page and search checks run at the same time.
       </p>
     </section>
   );

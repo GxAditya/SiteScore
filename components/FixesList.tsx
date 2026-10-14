@@ -26,7 +26,7 @@ const PRIORITY_STYLE: Record<FixPriority, string> = {
 const GROUP_NOTE: Record<FixPriority, string> = {
   P0: "Blocking - prevents AI agents & search from citing your page.",
   P1: "High impact - fix this week to increase visibility.",
-  P2: "Opportunistic - compounds search understanding over time.",
+  P2: "Nice to have - builds search understanding over time.",
 };
 
 type Filter = "All" | FixPriority;
@@ -261,7 +261,7 @@ export default function FixesList({
                 No fixes needed - your page is in peak condition!
               </h3>
               <p className="mt-1 text-xs text-sage-700 dark:text-sage-300">
-                Every audit check passed. AI search crawlers can read, index, and cite your page smoothly.
+                Every check passed. Search engines and AI tools can read, index, and quote your page with no blockers.
               </p>
             </div>
           </div>

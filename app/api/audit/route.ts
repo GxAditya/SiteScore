@@ -768,15 +768,15 @@ export async function POST(req: NextRequest) {
           id: "fetch_error_bot_blocked",
           category: "technical",
           status: "fail",
-          label: "Fetch blocked by bot protection",
-          detail: "The server treated the fetch crawler as a bot. AI assistants hitting the same wall cannot read or cite this page.",
+          label: "Page blocked by bot protection",
+          detail: "Our reader was blocked by the site's bot protection. AI assistants hitting the same wall cannot read or quote this page.",
           evidence: fetchErrors.filter((e) => fetchErrorCode(e) === code).map((e) => e.error).join(" | "),
         });
         fixes.push({
           priority: "P0",
-          title: "Allow well-behaved AI fetchers through bot protection",
-          why: `TinyFish Fetch reported "bot_blocked" for ${finalUrl}; the same block stops AI search assistants from reading the page.`,
-          how: "Allowlist fetch/assistant crawler user-agents and verify in robots.txt that the page path is allowed; keep rate-limiting for abuse but exempt single-page reads, then re-audit.",
+          title: "Let well-behaved AI and search bots through your bot protection",
+          why: `TinyFish Fetch reported "bot_blocked" for ${finalUrl}; the same block stops AI assistants and search engines from reading the page.`,
+          how: "In your bot protection settings, allow well-known AI and search bots (keep the limits for abusive traffic), confirm robots.txt allows this path, then run the audit again.",
           codeBefore: "User-agent: *\nDisallow: /",
           codeAfter: "User-agent: *\nAllow: /",
         });
@@ -786,14 +786,14 @@ export async function POST(req: NextRequest) {
           category: "technical",
           status: "fail",
           label: "Page requires login",
-          detail: "Fetch hit a sign-in wall, so anonymous AI tools (and logged-out searchers) see no content.",
+          detail: "The fetch hit a sign-in wall, so visitors who aren't logged in (and AI tools) see no content.",
           evidence: fetchErrors.filter((e) => fetchErrorCode(e) === code).map((e) => e.error).join(" | "),
         });
         fixes.push({
           priority: "P0",
-          title: "Expose a public, indexable version of the content",
-          why: `TinyFish Fetch reported "login_required" for ${finalUrl}; anything behind the wall is invisible to AI search.`,
-          how: "Publish the key content on a public URL (or add metering/first-click-free), keep the app behind login, then re-audit the public URL.",
+          title: "Publish a public, indexable version of the content",
+          why: `TinyFish Fetch reported "login_required" for ${finalUrl}; anything behind the wall is invisible to search engines and AI tools.`,
+          how: "Put the key content on a public URL (or use first-click-free metering), keep the app itself behind login, then run the audit on the public URL.",
           codeBefore: "HTTP 200 + login form HTML for anonymous fetch",
           codeAfter: "HTTP 200 + article HTML with full text for anonymous fetch",
         });
@@ -803,14 +803,14 @@ export async function POST(req: NextRequest) {
           category: "readability",
           status: "fail",
           label: "Page returned empty content",
-          detail: "The fetch succeeded but the extractor found nothing to read - likely a thin or script-only page.",
+          detail: "The fetch succeeded but found no text to read - likely a page built entirely with scripts.",
           evidence: fetchErrors.filter((e) => fetchErrorCode(e) === code).map((e) => e.error).join(" | "),
         });
         fixes.push({
           priority: "P0",
-          title: "Ship the core content in static HTML",
-          why: `TinyFish Fetch reported "empty_content" for ${finalUrl} (${wordCount} words extracted).`,
-          how: "Server-render the main article/body text into the HTML response instead of building it only in client JS, then re-audit.",
+          title: "Put the core content directly in the HTML",
+          why: `TinyFish Fetch reported "empty_content" for ${finalUrl} (${wordCount} words were read).`,
+          how: "Render the main article text directly in the HTML response instead of building it only with browser JavaScript, then run the audit again.",
           codeBefore: '<div id="app"><!-- rendered by JS --></div>',
           codeAfter: "<article><h1>…</h1><p>Full text in the HTML…</p></article>",
         });
@@ -819,32 +819,32 @@ export async function POST(req: NextRequest) {
           id: "fetch_error_timeout",
           category: "technical",
           status: "fail",
-          label: "Fetch timed out",
+          label: "Page took too long to load",
           detail: "The page took too long to respond, so AI tools may give up before reading it.",
           evidence: fetchErrors.filter((e) => fetchErrorCode(e) === code).map((e) => e.error).join(" | "),
         });
         fixes.push({
           priority: "P1",
-          title: "Bring server response time under control",
-          why: `TinyFish Fetch reported "timeout" for ${finalUrl}; slow pages get abandoned by crawlers and readers alike.`,
-          how: "Cut server response (TTFB) under ~1s: cache the page, defer heavy third-party scripts, then re-audit and compare latencyMs.",
-          codeBefore: "TTFB: timeout on fetch",
-          codeAfter: "TTFB < 1s, fetch latencyMs < 4000",
+          title: "Get the server's response time under control",
+          why: `TinyFish Fetch reported "timeout" for ${finalUrl}; slow pages get abandoned by visitors and search engines alike.`,
+          how: "Bring the server's first response under about 1 second: cache the page, delay heavy third-party scripts, then run the audit again and compare the load time.",
+          codeBefore: "Server first response: timed out",
+          codeAfter: "Server response < 1s, full load under 4000ms",
         });
       } else {
         checks.push({
           id: "fetch_error_page_not_found",
           category: "technical",
           status: "fail",
-          label: "Page not found on fetch",
-          detail: "Fetch could not find the page at this URL.",
+          label: "Page not found",
+          detail: "The fetch could not find the page at this URL.",
           evidence: fetchErrors.filter((e) => fetchErrorCode(e) === code).map((e) => e.error).join(" | "),
         });
         fixes.push({
           priority: "P0",
           title: "Fix the URL or restore the page",
           why: `TinyFish Fetch reported "page_not_found" for ${normalizedUrl}.`,
-          how: "Check for typos, restore the page, or 301-redirect the URL to its replacement, then re-audit.",
+          how: "Check for typos, restore the page, or redirect (301) the URL to its replacement, then run the audit again.",
           codeBefore: normalizedUrl,
           codeAfter: finalUrl !== normalizedUrl ? finalUrl : `${normalizedUrl} (HTTP 200 with content)`,
         });

@@ -36,10 +36,10 @@ interface ChatMessage {
 }
 
 const EXECUTION_STAGES = [
-  "Connecting to TinyFish Fetch API (ttl=0, live extraction)…",
-  "Analyzing DOM readability, heading hierarchy, metadata & schema…",
-  "Probing TinyFish Search API for live indexation & rank…",
-  "Synthesizing score, correlation model & prioritized fixes…",
+  "Fetching your page fresh with TinyFish (no cached copy)…",
+  "Checking readability, headings, metadata & structured data…",
+  "Checking how the page shows up in live search results…",
+  "Building your score and prioritized fixes…",
 ];
 
 export default function ChatPanel({
@@ -79,11 +79,11 @@ export default function ChatPanel({
 
     const summaryText =
       report.aiSummary?.text ||
-      `Live audit complete for ${report.input.finalUrl || targetUrl}. Overall score: ${report.score.total}/100 (Grade ${report.score.grade}). ${
+      `Audit complete for ${report.input.finalUrl || targetUrl}. Overall score: ${report.score.total}/100 (Grade ${report.score.grade}). ${
         p0Count > 0
-          ? `Found ${p0Count} blocking P0 issue${p0Count > 1 ? "s" : ""} preventing AI search engines from citing your content.`
-          : "Found no blocking P0 issues - your page is highly citable by AI assistants."
-      } ${isIndexed ? `Indexed in search (Rank: ${rank != null ? `#${rank}` : "Unranked"}).` : "Not currently indexed in search probe."}`;
+          ? `Found ${p0Count} blocking P0 issue${p0Count > 1 ? "s" : ""} that stop search engines and AI tools from citing your content.`
+          : "Found no blocking P0 issues - AI assistants can read and cite your page easily."
+      } ${isIndexed ? `Found in the search index (Rank: ${rank != null ? `#${rank}` : "not ranked"}).` : "Not currently found in the search index."}`;
 
     return {
       id: "msg-assistant-report",
@@ -172,7 +172,7 @@ export default function ChatPanel({
       const lower = trimmed.toLowerCase();
 
       if (!report) {
-        reply = "I'm currently running the live audit probe. As soon as results finish, I can answer in-depth questions!";
+        reply = "The audit is still running. As soon as the results are in, I can answer in-depth questions!";
       } else if (lower.includes("p0") || lower.includes("fix") || lower.includes("blocking")) {
         const p0s = report.fixes.filter((f) => f.priority === "P0");
         if (p0s.length > 0) {
@@ -186,20 +186,20 @@ export default function ChatPanel({
         }
       } else if (lower.includes("rank") || lower.includes("visibility") || lower.includes("index")) {
         const r = report.search.ranking;
-        reply = `Search indexation: ${report.search.indexation.indexed ? "Indexed" : "Not indexed"}. ` +
-          `Ranking: ${r.rank != null ? `Rank #${r.rank}` : "Unranked"} for query "${report.input.query}". ` +
-          `Switch to the Visibility tab to inspect competitor SERP results.`;
+        reply = `Search indexing: ${report.search.indexation.indexed ? "Indexed" : "Not indexed"}. ` +
+          `Ranking: ${r.rank != null ? `Rank #${r.rank}` : "Not ranked"} for the search phrase "${report.input.query}". ` +
+          `Open the Visibility tab to see which competitors hold the top results.`;
         onSelectTab("visibility");
       } else if (lower.includes("read") || lower.includes("crawl") || lower.includes("fetch")) {
-        reply = `TinyFish extracted ${report.fetch.wordCount} words with ${report.fetch.latencyMs}ms latency. ` +
-          `Heading H1: ${report.fetch.html.h1 ? "Present" : "Missing"}. Title: "${report.fetch.html.title || "None"}". ` +
-          `Check the Readability tab to inspect the raw content extraction.`;
+        reply = `TinyFish read ${report.fetch.wordCount} words from the page in ${report.fetch.latencyMs}ms. ` +
+          `H1 heading: ${report.fetch.html.h1 ? "Present" : "Missing"}. Title: "${report.fetch.html.title || "None"}". ` +
+          `Open the Readability tab to see exactly what was read.`;
         onSelectTab("readability");
       } else if (lower.includes("score")) {
         reply = `Overall Score: ${report.score.total}/100 (Grade ${report.score.grade}). Readability: ${report.score.readability}/100, Visibility: ${report.score.visibility}/100, Technical: ${report.score.technical}/100.`;
         onSelectTab("overview");
       } else {
-        reply = `Based on the live audit of ${report.input.finalUrl || targetUrl}, your overall AI-readiness score is ${report.score.total}/100. You can inspect the Fixes tab for actionable patches or ask specific questions like "What are my P0 issues?" or "Why am I unranked?".`;
+        reply = `Based on the fresh audit of ${report.input.finalUrl || targetUrl}, your overall AI-readiness score is ${report.score.total}/100. Open the Fixes tab for the exact code changes, or ask something specific like "What are my P0 issues?" or "Why am I not ranking?".`;
       }
 
       setExtraMessages((prev) => [
@@ -242,7 +242,7 @@ export default function ChatPanel({
                   loading ? "animate-ping bg-coral-500" : "bg-sage-500"
                 }`}
               />
-              {loading ? "Analyzing page live…" : "Live Agent"}
+              {loading ? "Analyzing your page…" : "Live Agent"}
             </p>
           </div>
         </div>
@@ -330,7 +330,7 @@ export default function ChatPanel({
           <div className="rounded-xl border border-sage-200 bg-white/80 p-3 shadow-2xs dark:border-sage-800 dark:bg-[#161D17]">
             <div className="flex items-center gap-2 font-semibold text-sage-900 dark:text-sage-100">
               <CircleNotch className="h-4 w-4 animate-spin text-sage-500" weight="bold" />
-              <span>Agent Execution Pipeline</span>
+              <span>Audit Steps</span>
             </div>
 
             <ol className="mt-2.5 space-y-1.5 border-l-2 border-sage-200 pl-3 dark:border-sage-800">
@@ -370,7 +370,7 @@ export default function ChatPanel({
           <div className="rounded-xl border border-coral-300 bg-coral-50/80 p-3 dark:border-coral-900 dark:bg-coral-950/40">
             <div className="flex items-center gap-2 text-coral-800 dark:text-coral-200 font-semibold">
               <XCircle className="h-4 w-4" weight="fill" />
-              <span>Audit Probe Failed</span>
+              <span>Audit Failed</span>
             </div>
             <p className="mt-1 text-coral-700 dark:text-coral-300">
               {failure.message}
@@ -393,7 +393,7 @@ export default function ChatPanel({
           <span className="shrink-0 text-sage-500">Ask:</span>
           {[
             "What are my P0 issues?",
-            "Why am I unranked?",
+            "Why am I not ranking?",
             "How do I fix metadata?",
           ].map((prompt) => (
             <button
@@ -413,7 +413,7 @@ export default function ChatPanel({
         <div className="relative mt-1">
           <input
             type="text"
-            placeholder="Ask agent, refine query, or paste new URL…"
+            placeholder="Ask the agent, or paste a new URL to audit…"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

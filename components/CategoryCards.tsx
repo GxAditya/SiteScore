@@ -22,19 +22,19 @@ const CATEGORIES = [
   {
     key: "readability",
     label: "Readability",
-    hint: "Can AI tools read and extract page content cleanly?",
+    hint: "Can search engines and AI tools read your page cleanly?",
     weight: "40% of score",
   },
   {
     key: "visibility",
     label: "Visibility",
-    hint: "Does search surface and rank this URL in answer results?",
+    hint: "Does this page show up in search and AI answer results?",
     weight: "35% of score",
   },
   {
     key: "technical",
     label: "Technical",
-    hint: "Fast latency, clean headers, and frictionless crawlability?",
+    hint: "Fast loading, clean headers, easy for search engines to crawl?",
     weight: "25% of score",
   },
 ] as const;

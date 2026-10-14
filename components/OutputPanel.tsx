@@ -221,7 +221,7 @@ export default function OutputPanel({
                 <>
                   {report.aiSummary && !report.aiSummary.generated && (
                     <div className="rounded-xl border border-sage-200 bg-sage-50/60 p-3.5 text-xs text-sage-700 dark:border-sage-800 dark:bg-sage-950/40 dark:text-sage-300">
-                      Rule-based summary shown above. Configure a Gemini API Key under Settings to generate an LLM executive briefing.
+                      A rule-based summary is shown above. Add a Gemini API key under Settings to also get an AI-written executive briefing.
                     </div>
                   )}
                   <RawEvidence report={report} />

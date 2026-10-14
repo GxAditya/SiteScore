@@ -47,25 +47,25 @@ function actionFor(code: string): ActionInfo {
     case "timeout":
       return {
         title: "Upstream timed out",
-        next: "The page or TinyFish took too long. Retry once; if it repeats, the page itself is too slow - that is itself a P1 finding (fetch latency).",
+        next: "The page or TinyFish took too long. Retry once; if it repeats, the page itself is slow - SiteScore flags that as a P1 load-time issue.",
       };
     case "bot_blocked":
     case "fetch_error_bot_blocked":
       return {
         title: "Fetch blocked by bot protection",
-        next: "The server treated the fetch crawler as a bot. Allowlist well-behaved AI fetchers for this path and retry - AI assistants hit the same wall.",
+        next: "The site's bot protection blocked our reader. Let well-behaved AI and search bots through, then retry - AI assistants hit the same wall.",
       };
     case "login_required":
     case "fetch_error_login_required":
       return {
         title: "Page requires login",
-        next: "Anonymous fetchers see a sign-in wall, so AI tools see nothing. Publish the key content on a public URL and audit that instead.",
+        next: "Visitors who are not logged in see only a sign-in wall, so AI tools read nothing. Publish the key content on a public URL and audit that instead.",
       };
     case "empty_content":
     case "fetch_error_empty_content":
       return {
         title: "Page returned empty content",
-        next: "Fetch succeeded but extracted nothing - likely a script-only page. Server-render the main content into the HTML and retry.",
+        next: "The fetch succeeded but returned no text - likely a page built entirely by scripts. Render the main content directly in the HTML and retry.",
       };
     case "page_not_found":
     case "fetch_error_page_not_found":
@@ -84,7 +84,7 @@ function actionFor(code: string): ActionInfo {
     case "request_timeout":
       return {
         title: "Request timed out",
-        next: "The audit exceeded the time budget. Retry once; persistent timeouts point at a very slow page (see the latency fix).",
+        next: "The audit exceeded the time budget. Retry once; if it keeps timing out, the page is very slow (see the load-time fix).",
       };
     default:
       return {

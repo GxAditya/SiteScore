@@ -3,15 +3,15 @@ import type { AuditReport } from "@/lib/audit-types";
 
 const NEXT_STEPS: Record<string, string> = {
   fetch_error_bot_blocked:
-    "Next: allowlist well-behaved AI fetchers for this path (keep abuse rate-limits), then re-audit. AI assistants hit the same wall.",
+    "Next: let well-behaved AI and search bots through your bot protection (keep the normal abuse limits), then run the audit again. AI assistants hit the same wall.",
   fetch_error_login_required:
-    "Next: publish the key content on a public URL (or add first-click-free) and audit that URL instead.",
+    "Next: publish the key content on a public URL (no sign-in needed) and audit that URL instead.",
   fetch_error_empty_content:
-    "Next: server-render the main article text into the HTML instead of building it only in client JS, then re-audit.",
+    "Next: render the main article text directly in the HTML instead of building it only with browser JavaScript, then run the audit again.",
   fetch_error_timeout:
-    "Next: bring server response (TTFB) under ~1s - cache the page and defer heavy third-party scripts - then re-audit.",
+    "Next: get the server's first response under about 1 second - cache the page and delay heavy third-party scripts - then run the audit again.",
   fetch_error_page_not_found:
-    "Next: check the URL for typos, restore the page, or 301-redirect it to its replacement, then re-audit.",
+    "Next: check the URL for typos, restore the page, or redirect it (301) to its replacement, then run the audit again.",
 };
 
 export default function FetchAlerts({ report }: { report: AuditReport }) {
@@ -64,7 +64,7 @@ export default function FetchAlerts({ report }: { report: AuditReport }) {
             <span>
               <span className="font-semibold">Next action: </span>
               {NEXT_STEPS[c.id] ??
-                "See the P0 fix for this fetch error below, apply it, then re-audit."}
+                "See the P0 fix for this fetch error below, apply it, then run the audit again."}
             </span>
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function FetchAlerts({ report }: { report: AuditReport }) {
             <span>
               <span className="font-semibold">Next action: </span>
               See the P0 fix referencing this error below, apply it, then
-              re-audit.
+              run the audit again.
             </span>
           </p>
         </div>

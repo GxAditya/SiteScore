@@ -92,10 +92,10 @@ export default function ReadabilityPanel({ report }: { report: AuditReport }) {
           AI Assistant Readability
         </h2>
         <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
-          What AI fetch tools extracted from the live page markup (ttl=0).
+          What the page actually delivered to readers (fetched fresh, not cached).
         </p>
         <p className="mt-1 text-xs tabular-nums text-sage-500 dark:text-sage-400">
-          {f.wordCount.toLocaleString()} words · {f.latencyMs.toLocaleString()} ms latency · title:{" "}
+          {f.wordCount.toLocaleString()} words · {f.latencyMs.toLocaleString()} ms load time · title:{" "}
           {f.html.title ? `${f.html.title.length} chars` : "missing"} · H1:{" "}
           {f.html.h1 ? "present" : "missing"}
         </p>

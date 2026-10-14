@@ -133,7 +133,7 @@ export default function SettingsModal({
               className="w-full rounded-xl border border-sage-200 bg-sage-50/50 px-3.5 py-2.5 text-sm text-sage-950 transition-all placeholder:text-sage-400 hover:border-sage-300 focus:border-sage-200 focus:bg-white focus:outline-none focus:shadow-none dark:border-sage-800 dark:bg-[#1b251d] dark:text-sage-50 dark:hover:border-sage-700 dark:focus:border-sage-800 dark:focus:bg-[#1b251d] dark:focus:shadow-none"
             />
             <p className="mt-1 text-[11px] text-sage-500 dark:text-sage-400">
-              Powers TinyFish Search & Fetch probes. Get a free key at{" "}
+              Powers the TinyFish Search & Fetch checks. Get a free key at{" "}
               <a
                 href="https://agent.tinyfish.ai/api-keys"
                 target="_blank"

@@ -144,7 +144,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       ? "yes"
       : "no";
   const rankLabel =
-    ranking.error || ranking.rank === null ? "unranked" : `#${ranking.rank}`;
+    ranking.error || ranking.rank === null ? "not ranked" : `#${ranking.rank}`;
   const visibleRanks = showAllRanks
     ? ranking.results
     : ranking.results.slice(0, RANK_CAP);
@@ -163,15 +163,15 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
           Search visibility
         </p>
         <h2 className="mt-1 text-lg font-bold tracking-tight text-sage-950 dark:text-sage-50">
-          Search Visibility Probes
+          How You Show Up in Search
         </h2>
         <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
-          Live indexation and ranking measured with TinyFish Search probes.
+          Live indexing and ranking, measured with TinyFish Search.
         </p>
         <p className="mt-1 text-xs tabular-nums text-sage-500 dark:text-sage-400">
           indexed: <strong className="text-sage-800 dark:text-sage-200">{indexedLabel}</strong> · rank:{" "}
           <strong className="text-sage-800 dark:text-sage-200">{rankLabel}</strong> ·{" "}
-          {ranking.results.length} result(s) observed · {competitors.length} competitor(s)
+          {ranking.results.length} result(s) found · {competitors.length} competitor(s)
         </p>
       </div>
 
@@ -182,11 +182,11 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="card h-full p-4">
           <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
-            Indexation Status
+            Is It Indexed?
           </h3>
           {indexation.error ? (
             <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
-              Indexation check unavailable ({indexation.error}).
+              Indexing check unavailable ({indexation.error}).
             </p>
           ) : (
             <p className="mt-1 text-xs sm:text-sm text-sage-800 dark:text-sage-200">
@@ -201,18 +201,18 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
                 {indexation.indexed ? "INDEXED" : "NOT INDEXED"}
               </span>
               {indexation.indexed
-                ? `Exact URL found via site: probe${indexation.matchUrl ? ` (${indexation.matchUrl})` : ""}.`
-                : "Exact URL did not surface in the site: probe."}
+                ? `The exact URL shows up in a site: search${indexation.matchUrl ? ` (${indexation.matchUrl})` : ""}.`
+                : "The exact URL did not appear in the site: search."}
             </p>
           )}
           <p className="mt-2 font-mono text-[11px] tabular-nums text-sage-500 dark:text-sage-400">
-            probe: {indexation.query} · {indexation.totalResults} total result(s)
+            searched: {indexation.query} · {indexation.totalResults} total result(s)
           </p>
         </div>
 
         <div className="card h-full p-4">
           <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
-            Rank Position
+            Your Rank
           </h3>
           {ranking.error ? (
             <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
@@ -230,11 +230,11 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
               <span className="mr-2 inline-block rounded-md bg-coral-100 px-2 py-0.5 font-mono text-xs font-bold text-coral-900 dark:bg-coral-900/60 dark:text-coral-200">
                 UNRANKED
               </span>
-              Not found among {ranking.results.length} observed search results.
+              Not found among the {ranking.results.length} search results we saw.
             </p>
           )}
           <p className="mt-2 font-mono text-[11px] text-sage-500 dark:text-sage-400">
-            probe: {ranking.query}
+            searched: {ranking.query}
           </p>
         </div>
       </div>
@@ -242,14 +242,14 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       {snippetCheck && (
         <div className="card p-4">
           <h3 className="text-sm font-semibold text-sage-950 dark:text-sage-50">
-            Snippet Term Matching
+            Search Preview Word Match
           </h3>
           <p className="mt-1 text-xs sm:text-sm text-sage-800 dark:text-sage-200">
             <Highlighted text={snippetCheck.evidence} terms={terms} />
           </p>
           {terms.length > 0 && (
             <p className="mt-2 text-xs text-sage-600 dark:text-sage-400">
-              Query terms highlighted:{" "}
+              Search words highlighted:{" "}
               {terms.map((t) => (
                 <code
                   key={t}
@@ -340,7 +340,7 @@ export default function VisibilityPanel({ report }: { report: AuditReport }) {
       {competitors.length > 0 && (
         <div className="card p-4">
           <h3 className="text-sm font-semibold tabular-nums text-sage-950 dark:text-sage-50">
-            Competitor Domains Contesting Query ({competitors.length})
+            Competitors on This Search ({competitors.length})
           </h3>
           <ul className="mt-2.5 grid gap-2">
             {visibleCompetitors.map((c, i) => (

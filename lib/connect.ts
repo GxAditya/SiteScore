@@ -45,40 +45,40 @@ export function buildConnection(input: ConnectionInput): Connection {
   const rankState =
     input.rankPosition !== null
       ? `ranks #${input.rankPosition} of ${input.resultCount}`
-      : `is unranked across ${input.resultCount} observed results`;
-  const indexState = input.indexed ? "is indexed" : "shows no exact-URL indexation";
+      : `does not appear in the ${input.resultCount} results we saw`;
+  const indexState = input.indexed ? "is indexed" : "is not found by its exact URL";
 
   const summary =
-    `Live fetch extracts ${facts.wordCount} words across ${facts.h1Count + facts.h2Count} top-level headings with ` +
+    `A fresh fetch read ${facts.wordCount} words under ${facts.h1Count + facts.h2Count} top-level headings with ` +
     `${facts.title ? `a ${facts.titleLength}-char title` : "no title"} and ` +
     `${facts.metaDescription ? `a ${facts.metaDescriptionLength}-char meta description` : "no meta description"}. ` +
     `AI tools CAN read: ${canRead.join("; ")}.` +
-    (cantRead.length > 0 ? ` They CANNOT use: ${cantRead.join("; ")}.` : ` No blocking readability gaps were measured.`) +
-    ` In search, the page ${indexState} and ${rankState} for "${clip(q, 60)}" against ${input.competitorCount} same-intent competitors.`;
+    (cantRead.length > 0 ? ` They CANNOT use: ${cantRead.join("; ")}.` : ` No readability blockers found.`) +
+    ` In search, the page ${indexState} and ${rankState} for "${clip(q, 60)}" against ${input.competitorCount} competing pages.`;
 
   const snippetStatus = statusOf(checks, "v-snippet-match");
   const snippetNote =
     snippetStatus === "pass"
-      ? "so the SERP title/snippet already carries the query terms"
+      ? "your search listing title and preview already contain the search terms"
       : snippetStatus === "warn"
-        ? "so the SERP snippet carries only part of the query vocabulary"
-        : "so the search snippet falls back to arbitrary page text with no query-term overlap";
+        ? "the search preview contains only some of the search terms"
+        : "the search preview falls back to random page text with no overlap with the search terms";
   const competitorNote =
     input.rankPosition !== null && input.topCompetitorTitle
-      ? ` while "${clip(input.topCompetitorTitle, 60)}" (${input.topCompetitorDomain ?? "competitor"}) holds a higher slot`
+      ? ` while "${clip(input.topCompetitorTitle, 60)}" (${input.topCompetitorDomain ?? "competitor"}) holds a higher spot`
       : input.rankPosition === null && input.topCompetitorTitle
-        ? ` while "${clip(input.topCompetitorTitle, 60)}" (${input.topCompetitorDomain ?? "competitor"}) owns the visible SERP`
-        : ` with ${input.competitorCount} competing pages contesting the same intent`;
+        ? ` while "${clip(input.topCompetitorTitle, 60)}" (${input.topCompetitorDomain ?? "competitor"}) holds the visible results`
+        : ` with ${input.competitorCount} competing pages chasing the same search intent`;
   const schemaNote =
     facts.jsonLdValid >= 1
-      ? `${facts.jsonLdValid} valid JSON-LD block(s) give answer engines typed facts to cite`
-      : "0 valid JSON-LD blocks mean answer engines get prose only and cite structured competitors first";
+      ? `${facts.jsonLdValid} valid JSON-LD block(s) give AI tools clearly labeled facts to quote`
+      : "0 valid JSON-LD blocks means AI tools only get plain prose and cite structured competitors first";
 
   const correlation =
-    `Because the fetch yields ${facts.wordCount} words with ${facts.h1Count === 1 ? "a single H1" : `${facts.h1Count} H1s`} and ` +
+    `Because a fresh fetch reads ${facts.wordCount} words with ${facts.h1Count === 1 ? "a single H1" : `${facts.h1Count} H1s`} and ` +
     `${facts.metaDescription ? `a ${facts.metaDescriptionLength}-char meta description` : "no meta description"}, ${snippetNote}. ` +
-    `That readability profile converts directly into the visibility outcome: the page ${rankState} for "${clip(q, 60)}"${competitorNote}. ` +
-    `Fix the extraction side first - ${schemaNote} - and re-probe ranking, since ${facts.wordCount < 300 ? `${facts.wordCount} words cannot out-cite longer pages` : `every added structured fact raises citation odds without new backlinks`}.`;
+    `That readability profile shows up directly in the search outcome: the page ${rankState} for "${clip(q, 60)}"${competitorNote}. ` +
+    `Fix the on-page reading side first - ${schemaNote} - then re-check ranking, since ${facts.wordCount < 300 ? `${facts.wordCount} words cannot beat longer pages for citations` : `every added structured fact raises citation odds without new backlinks`}.`;
 
   return { summary, correlation };
 }

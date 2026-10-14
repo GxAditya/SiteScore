@@ -116,23 +116,23 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
     >
       <div>
         <h2 className="text-lg font-bold text-sage-950 dark:text-sage-50">
-          Raw Probe Evidence
+          Raw Data & Evidence
         </h2>
         <p className="mt-0.5 text-xs text-sage-600 dark:text-sage-400">
-          Unedited payloads from live fetch and TinyFish search responses.
+          Unedited responses from the page fetch and the search checks.
         </p>
       </div>
 
       <div className="grid gap-3">
         <EvidenceSection
           icon={FileText}
-          title="Extracted Markdown Excerpt"
+          title="Page Text Excerpt (Markdown)"
           meta={`${excerpt.length} chars · ${report.fetch.wordCount} words`}
           copyValue={excerpt || undefined}
           defaultOpen={false}
         >
           <pre className="max-h-96 overflow-auto rounded-xl bg-sage-50/60 p-3 font-mono text-xs leading-relaxed text-sage-900 dark:bg-[#111712] dark:text-sage-200">
-            <code>{visible || "(no markdown excerpt returned)"}</code>
+            <code>{visible || "(no page text was returned)"}</code>
           </pre>
           {truncated && (
             <button
@@ -150,7 +150,7 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
 
         <EvidenceSection
           icon={Code}
-          title="Search JSON (Indexation & Rankings)"
+          title="Search JSON (Indexing & Rankings)"
           meta="raw response payload"
           copyValue={searchJson}
           defaultOpen={false}
@@ -163,14 +163,14 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
         <EvidenceSection
           icon={MagnifyingGlass}
           title="Search Queries & Fetch Logs"
-          meta={`${report.raw.fetchErrors.length} error(s) · ${report.raw.searchQueries.length} query probe(s)`}
+          meta={`${report.raw.fetchErrors.length} error(s) · ${report.raw.searchQueries.length} searches run`}
           copyValue={probeText}
           defaultOpen={false}
         >
           <div className="grid gap-3 text-xs sm:text-sm">
             <div>
               <h3 className="font-mono text-xs font-bold text-sage-500 dark:text-sage-400">
-                PROBED SEARCH QUERIES
+                SEARCHES RUN
               </h3>
               {report.raw.searchQueries.length === 0 ? (
                 <p className="mt-1 font-mono text-xs text-sage-800 dark:text-sage-200">
@@ -197,7 +197,7 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
               </h3>
               {report.raw.fetchErrors.length === 0 ? (
                 <p className="mt-1 font-mono text-xs text-sage-800 dark:text-sage-200">
-                  Clean fetch - both HTML and Markdown payloads successfully parsed.
+                  Clean fetch - both the HTML and text versions of the page loaded fully.
                 </p>
               ) : (
                 <ul className="mt-1 grid gap-1">

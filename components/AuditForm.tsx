@@ -263,7 +263,7 @@ export default function AuditForm({
                     }
                     className={inputClass}
                   >
-                    <option value="none">Rules only (no LLM)</option>
+                    <option value="none">Rules only (no AI summary)</option>
                     <option value="gemini">Gemini (needs key)</option>
                   </select>
                 </div>

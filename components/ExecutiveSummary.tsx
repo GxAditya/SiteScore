@@ -68,7 +68,7 @@ export default function ExecutiveSummary({
             {indexed ? "Indexed" : "Not indexed"}
           </span>
           <span className="inline-flex items-center rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-semibold text-sage-800 dark:bg-sage-900/60 dark:text-sage-200">
-            {rank != null ? `Rank #${rank}` : "Unranked"}
+            {rank != null ? `Rank #${rank}` : "Not ranked"}
           </span>
         </div>
       </div>
@@ -102,7 +102,7 @@ export default function ExecutiveSummary({
         </div>
       ) : (
         <p className="mt-3 text-xs text-sage-600 dark:text-sage-400">
-          No blocking P0 fixes detected - proceed with P1 optimizations.
+          No blocking P0 issues - focus on the P1 improvements instead.
         </p>
       )}
     </section>

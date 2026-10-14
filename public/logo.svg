@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="SiteScore logo">
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#5C7057"/>
+  <rect x="24" y="32" width="62" height="10" rx="5" fill="#F8FAF7"/>
+  <rect x="24" y="52" width="46" height="10" rx="5" fill="#F8FAF7" opacity="0.78"/>
+  <rect x="24" y="72" width="54" height="10" rx="5" fill="#F8FAF7" opacity="0.55"/>
+  <circle cx="92" cy="84" r="19" fill="#F8FAF7"/>
+  <path d="M84 84 l6 6 l12 -13" fill="none" stroke="#5C7057" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

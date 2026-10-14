@@ -1,222 +1,233 @@
-# SiteScore — SEO Page Auditor
+<div align="center">
+  <img src="public/logo.svg" alt="SiteScore logo" width="96" />
+  <h1>SiteScore</h1>
+  <p><strong>AI search & readability auditor for any live URL.</strong></p>
+</div>
 
-Audit whether AI search and fetch tools can read and understand a live page —
-and how that ties to SEO and ranking. Every finding cites a measured value
-(lengths, counts, URLs), never a generic tip.
+## Introduction
 
-Built with Next.js 14 App Router + TypeScript + Tailwind, deployed on Vercel.
-Uses **TinyFish Search + Fetch** (live, `ttl: 0`). Deterministic rule engine in
-`lib/`; optional Gemini executive summary (Task 5).
+SiteScore answers one question: can AI search tools and assistants actually read, understand, and surface your page? Paste any public URL and it runs live probes, scores the result 0 to 100, and gives you a prioritized fix list.
 
-## Setup
+- Probes what an AI tool sees: fetches the page as HTML and as Markdown, exactly like an agent would.
+- Probes whether the page surfaces in search: runs a `site:` index check and a ranking check for the target query.
+- Every finding cites a measured value (word count, title length, rank position, latency). No generic "improve your SEO" tips.
+- Fixes are labeled P0/P1/P2, with before/after code and copy-paste prompts you can hand to a coding agent.
+- The audit itself is deterministic (a rule engine, not an LLM). An optional Gemini summary is extra, never required.
+- Bring-your-own-key (BYOK): the deployed site bills your own TinyFish key, not the developer's.
 
-Requirements: Node 18+ and npm.
+Live app: https://site-score-ecru.vercel.app
+
+## Tech Stack
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Node.js](https://img.shields.io/badge/Node.js-20.9%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![TinyFish](https://img.shields.io/badge/TinyFish-Search_%2B_Fetch-5C7057?style=flat-square)](https://docs.tinyfish.ai)
+[![Gemini](https://img.shields.io/badge/Gemini-optional-8862FF?style=flat-square&logo=googlegemini&logoColor=white)](https://aistudio.google.com)
+[![Vercel](https://img.shields.io/badge/Hosting-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com)
+[![Upstash](https://img.shields.io/badge/Rate_Limits-Upstash_Redis-00E9A2?style=flat-square&logo=upstash&logoColor=black)](https://upstash.com)
+
+| Layer | What it is | Why it is here |
+|---|---|---|
+| Framework | Next.js 16 (App Router) + React 19 | One codebase for the page and the `/api/audit` server route |
+| Language | TypeScript, strict mode | The audit contract and the engine stay verifiable |
+| Styling | Tailwind CSS 4 | The report UI with no component library |
+| Parsing | Cheerio | Extracts H1 and meta description from fetched HTML |
+| Validation | Zod | Strict schema on every request body |
+| Data | TinyFish Search + Fetch | The live probes (see section below) |
+| Hosting | Vercel Hobby (free) | Stateless serverless, no database needed |
+
+## Demo
+
+Open https://site-score-ecru.vercel.app, paste a public URL (for example a blog post you own), and run the audit. It takes about 30 to 120 seconds because all probes hit live pages.
+
+What you get back:
+
+- A 0 to 100 score with a letter grade, split into Readability, Visibility, and Technical subscores.
+- A check list where every pass, warn, or fail cites a measured value from the live fetch or search probe.
+- Prioritized fixes with before/after code, plus a copy-paste prompt for each fix (`lib/agent-prompt.ts`) that a coding agent can execute without extra context.
+- Visibility panel: is the page indexed (`site:` probe), what rank does it hold for the target query, which competitors rank above it.
+- Readability panel: word count, title and meta lengths, link and image counts, fetch latency, the Markdown an AI extractor actually received.
+- Export as Markdown, JSON, or print. Recent audits stay in your browser's localStorage only.
+
+The deployed app is hard BYOK: it asks for your own TinyFish key under Settings, because the developer key fallback is off in production by default. See [Architectural Decisions](#architectural-decisions).
+
+## Local Setup
+
+Requirements:
+
+- Node.js 20.9 or newer (enforced by Next.js 16).
+- npm.
+- A TinyFish API key, free at https://agent.tinyfish.ai/api-keys.
+- Optionally a Gemini API key from https://aistudio.google.com, only for the AI summary.
 
 ```bash
+git clone https://github.com/GxAditya/SiteScore.git
+cd SiteScore
 npm install
-cp .env.example .env
-# Edit .env and set TINYFISH_API_KEY (get one free at https://agent.tinyfish.ai/api-keys)
-# GEMINI_API_KEY is optional — only for the LLM executive summary (see below).
+cp .env.example .env    # then put your TINYFISH_API_KEY in .env
+npm run dev             # http://localhost:3000
 ```
 
-## Run
+Check your work before committing:
 
 ```bash
-npm run dev     # local dev at http://localhost:3000
-npm run build   # production build (must pass before deploy)
-npm run start   # serve the production build at http://localhost:3000
-npm run lint    # eslint
+npm run typecheck       # tsc --noEmit, strict
+npm run lint            # eslint
+npm run build           # must pass before deploy
+npm test                # engine self-test + 39 security assertions, no network needed
 ```
 
-## Test
-
-```bash
-npx tsc --noEmit          # typecheck (strict)
-npx -y tsx lib/selftest.ts  # engine self-test: good page outscores thin page,
-                            # every fix cites a measured value, scoring deterministic
-npx -y tsx lib/security/selftest.ts  # 37 security assertions: SSRF bypasses,
-                            # rate limits, budgets, AES-GCM rotation/revocation,
-                            # redaction, prompt-injection defense. Exits non-zero on failure.
-```
-
-See **`SECURITY.md`** for the full threat model, findings by severity, and the
-list of environment variables that control cost protection.
-
-Non-network API paths can be verified against a local server without a valid
-key (see `QA.md` for the full matrix and exact commands):
+Smoke-test the API without opening the browser:
 
 ```bash
 npm run start &
-curl -s -o /dev/null -w "GET / -> %{http_code}\n" http://localhost:3000/
 curl -s -X POST http://localhost:3000/api/audit \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com/page"}'
-# With no/invalid key: 400 missing_api_key / 401 invalid_api_key.
-# With a valid key: full audit JSON (takes up to ~2 min for slow pages).
+  -d '{"url":"https://example.com","tinyfishKey":"YOUR_KEY"}'
 ```
 
-## UI overview
+With no key the route returns `400 missing_api_key` (it does that even on the live deployment; that is the BYOK guard working). With a valid key you get the full audit JSON.
 
-Report tabs jump between Overview, Fixes, Visibility, Readability, and Evidence via a sticky keyboard-navigable bar. Recent audits persist locally with one-click re-run. Export any report as Markdown, JSON, or print. Dark mode persists across visits with no flash. Every input is labeled with inline help; loading announces politely and errors use `role=alert`. All motion respects `prefers-reduced-motion`.
-
-## Architecture
-
-```
-browser form (app/page.tsx + components/)
-  │  POST /api/audit  { url, query?, tinyfishKey?, llmKey?, llmProvider? }
-  ▼
-/api/audit (app/api/audit/route.ts, Node runtime, maxDuration 120, no-store)
-  │  Phase A: Fetch HTML + Fetch Markdown in parallel (ttl: 0 — LIVE pages only,
-  │           never a saved copy), derive target query when missing
-  │  Phase B: Search indexation probe (site:<domain> "<slug>") +
-  │           Search ranking probe (target query) in parallel
-  ▼
-deterministic engine (lib/: analyze → score → fixes → connect, + optional llm)
-  │
-  ▼
-single-page report: ScoreGauge, CategoryCards, ConnectionBanner,
-ReadabilityPanel (Fetch), VisibilityPanel (Search), FixesList, RawEvidence, ExportBar
-```
-
-**Live-audit note:** every Fetch body sends `ttl: 0`
-(`app/api/audit/route.ts:307`), and `/api/audit` responds with
-`Cache-Control: no-store` — audits are never served from, or stored in, a
-server-side cache. The report shows a "Live" badge with `fetchedAt`.
-
-**Server-only keys:** the browser only ever calls `/api/audit`. No page or
-component calls `api.search.tinyfish.ai` / `api.fetch.tinyfish.ai` directly,
-and `process.env.TINYFISH_API_KEY` is read only in the server route.
-
-## Rate limits and cost protection
-
-**Every audit costs 4 upstream calls** (2 Fetch + 2 Search). SiteScore enforces
-hard server-side limits *before* any upstream call, so a blocked request costs
-nothing:
-
-| Guard | Default (production) | Purpose |
-|---|---|---|
-| `RATE_LIMIT_PER_MINUTE` | 10 | Per key fingerprint **and** per client IP |
-| `RATE_LIMIT_PER_HOUR` | 120 | Per identity |
-| `RATE_LIMIT_PER_DAY` | 500 | Per identity — hard spend ceiling per client |
-| `RATE_LIMIT_GLOBAL_PER_HOUR` | 3,000 | Platform-wide, across every key and IP |
-| `RATE_LIMIT_GLOBAL_PER_DAY` | 20,000 | Platform-wide daily bill ceiling |
-| `RATE_LIMIT_MAX_CONCURRENT` | 10 | Blocks parallel-request cost amplification |
-| `RATE_LIMIT_MAX_CONCURRENT_PER_IDENTITY` | 2 | One browser can't fan out |
-| `LLM_PLATFORM_KEY_PER_DAY` | 50 | Ceiling on platform-funded LLM calls |
-
-Hitting a limit returns `429` with a `Retry-After` header. If a configured
-rate-limit backend is unreachable the request is **denied** (`503`,
-fail-closed) — an unavailable limiter never becomes unlimited spend.
-
-> **Set `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` in production.**
-> Without them, limits are per server instance and an attacker gets a fresh
-> allowance on every cold start.
-
-## Environment variables
-
-Full documentation with every knob is in **`.env.example`**. The essentials:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `ALLOW_PLATFORM_KEY` | `false` in production | Whether requests **without** a BYOK key may use the server's key. Keep unset so anonymous traffic can never bill you. |
-| `TINYFISH_API_KEY` | — | Server key, used only for BYOK-authenticated requests when platform keys are allowed |
-| `GEMINI_API_KEY` | — | Same, for the optional AI summary |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | — | Distributed rate limiting (required for global limits) |
-| `SITESCORE_ACCESS_TOKEN` | — | When set, `POST /api/audit` requires `x-sitescore-token` |
-| `KEY_ENCRYPTION_KEYRING` | — | `kid:base64key,...` for AES-256-GCM storage of keys; first entry is active |
-| `AUDIT_LOG_ENABLED` | `true` | Structured, hash-chained JSON audit events (no secrets) |
-
-**BYOK + env resolution**: the request-body `tinyfishKey` wins when present.
-The server env key is used **only** if `ALLOW_PLATFORM_KEY` permits it — in
-production it does not, by default. If neither is available → `400
-missing_api_key`. Keys are never echoed in responses or logs; logs record only a
-truncated HMAC fingerprint. In the UI, keys live in page memory for the request
-and are never persisted.
-
-## Deploy
-
-### Vercel (primary, Hobby free)
+Deploy to Vercel:
 
 ```bash
-npm run build          # must pass locally first
+npm run build           # must pass locally first
 vercel --prod
 ```
 
-Then in the Vercel dashboard → Project Settings → Environment Variables, add
-`TINYFISH_API_KEY` (and optionally `GEMINI_API_KEY`), and redeploy so the
-values take effect. No other configuration is needed: `vercel.json` uses the
-Next.js framework default, the route sets `maxDuration = 120` in code, and
-there is no database or persistent server.
+Then add `TINYFISH_API_KEY` (and optionally `GEMINI_API_KEY`) in Vercel Project Settings, Environment Variables, and redeploy. No other configuration is required. `vercel.json` only sets the Next.js framework default, and the audit route declares `maxDuration = 120` in code.
 
-### Fallbacks
+Environment variables (every knob is documented in `.env.example`):
 
-- **Cloudflare Pages:** supported via the Next.js adapter
-  (`@cloudflare/next-on-pages`). Note: the audit route runs up to ~120s;
-  confirm the Workers plan timeout covers it, or raise the client timeout
-  accordingly. Set the same env vars in Pages → Settings → Environment Variables.
-- **Netlify:** deploy with the Next.js Runtime (`@netlify/plugin-nextjs`).
-  Function timeout on the free tier is shorter — long audits of slow pages may
-  hit it; Vercel remains the recommended target. Set env vars in
-  Site settings → Environment variables.
-
-## Troubleshooting
-
-| Symptom (HTTP / `error` code) | Meaning | Fix |
+| Variable | Required | Purpose |
 |---|---|---|
-| 400 `missing_api_key` | No key via BYOK or server env | Add key under Advanced → API keys, or set `TINYFISH_API_KEY` on the server |
-| 401 `invalid_api_key` | TinyFish rejected the key | Check for typos/extra spaces; generate a fresh key at https://agent.tinyfish.ai/api-keys |
-| 429 `rate_limited` (`retryable:true`) | Free-tier throttle (Search 30/min, Fetch 150 URLs/min) | Wait ~1 min and retry |
-| 200 with `fetch_error_bot_blocked` fail check | Target blocks crawler/assistant fetches | P0 fix in report: allowlist well-behaved fetchers, verify `robots.txt`, re-audit |
-| 200 with `fetch_error_login_required` | Page sits behind sign-in | Publish the key content on a public URL and audit that instead |
-| 200 with `fetch_error_empty_content` / thin-content fail | Script-only or near-empty page | Server-render core content into HTML (report cites measured word count) |
-| 200 with `fetch_error_timeout` / latency warn | Page too slow (or TinyFish slow) | Cut TTFB < ~1s, defer heavy scripts, re-audit and compare `latencyMs` |
-| 400 `invalid_url` | Non-http(s) scheme, over 2000 chars, unparseable | Provide a plain `https://…` URL (bare `example.com/page` is auto-prefixed) |
-| 400 `private_host_not_allowed` | localhost / LAN / `169.254.x` / metadata hosts | Audits of private hosts are blocked by design; use a public URL |
-| 400 `invalid_request` | Malformed JSON or failed validation | Send valid JSON matching `{url, query?, tinyfishKey?, llmKey?, llmProvider?}` |
-| 401 `unauthorized` | `SITESCORE_ACCESS_TOKEN` is set but absent/wrong | Send the token in `x-sitescore-token` |
-| 413 `invalid_request` | Request body over 16 KB | Shorten the URL/query; keys are not arbitrarily large |
-| 429 `rate_limited` | Per-minute/hour/day or global cap reached | Wait for `Retry-After` |
-| 429 `concurrency_limit` | Too many audits already running | Wait for the current one to finish |
-| 429 `budget_exhausted` | Daily platform budget exhausted | Add your own key, or raise `RATE_LIMIT_GLOBAL_PER_DAY` |
-| 503 `server_busy` | Global concurrency cap reached | Retry shortly |
-| 503 `rate_limiter_unavailable` | Configured rate-limit backend is down (fail-closed) | Check the Redis credentials |
-| 400 `private_host_not_allowed` | Target resolves to localhost / private / link-local / metadata | Use a public URL |
-| Client abort after 150s (`request_timeout`) | Very slow page + upstream chain | Retry once; if it repeats, the page itself is too slow — itself a P1 finding |
+| `TINYFISH_API_KEY` | yes, unless all callers BYOK | Server-side key for the probes |
+| `GEMINI_API_KEY` | no | Optional AI summary |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | recommended in production | Makes rate limits global across serverless instances; without them, limits are per instance |
+| `ALLOW_PLATFORM_KEY` | leave unset | When false (production default) anonymous callers can never bill you |
+| `SITESCORE_ACCESS_TOKEN` | no | When set, requests must send `x-sitescore-token` |
 
-## API quick reference
+## Architecture
 
-`POST /api/audit` (`Content-Type: application/json`):
-
-```json
-{ "url": "https://example.com/page", "query": "optional target query",
-  "tinyfishKey": "optional BYOK", "llmKey": "optional Gemini key",
-  "llmProvider": "gemini|none" }
+```mermaid
+flowchart TD
+    U["Browser form: app/page.tsx + components/"] -->|"POST /api/audit: url, query?, tinyfishKey?, llmKey?, llmProvider?"| G["Security gate: lib/security/gate.ts. Token auth, rate limits, concurrency, daily budgets. Runs before any upstream call"]
+    G -->|denied| E["429 / 401 / 503 with Retry-After. Zero upstream calls, zero cost"]
+    G -->|admitted| V["URL guard: lib/security/url-guard.ts. Parses the URL, blocks private and metadata ranges, resolves DNS and re-checks"]
+    V --> A["Phase A: TinyFish Fetch x2 in parallel: format html and format markdown, both with ttl 0"]
+    A --> Q["Derive target query from title, H1, meta description when the caller omitted it"]
+    Q --> B["Phase B: TinyFish Search x2 in parallel: indexation probe and ranking probe"]
+    B --> EN["Deterministic engine: lib/ analyze, score, fixes, connect"]
+    EN --> L{"Gemini key available?"}
+    L -->|yes| S["Optional executive summary: lib/llm.ts. Any failure degrades to the rule summary"]
+    L -->|no| R["Report UI: ScoreGauge, CategoryCards, FixesList, VisibilityPanel, ReadabilityPanel, RawEvidence, ExportBar"]
+    S --> R
 ```
 
-Success returns the contract JSON (`input`, `score`, `fetch`, `search`,
-`checks`, `fixes`, `connection`, `aiSummary`, `raw`) — see `tasks.md` for the
-full shape and `QA.md` for the verified test matrix (PRD reqs 1–8 → evidence).
+The request flow is exactly two phases and four metered calls per audit. Where things live:
 
-## Optional: Gemini AI summary (Task 5)
+| Path | Role |
+|---|---|
+| `app/page.tsx` + `components/` | Landing form, report panels, settings modal, export |
+| `app/api/audit/route.ts` | The only endpoint: orchestration, TinyFish clients, response assembly |
+| `lib/analyze.ts`, `score.ts`, `fixes.ts`, `connect.ts`, `engine.ts` | Deterministic engine: measures, scores, generates fixes, connects readability to visibility |
+| `lib/security/` | Gate, rate limiter, URL/SSRF guard, crypto, redaction, audit log |
+| `lib/llm.ts` | Optional Gemini call, server only |
+| `lib/agent-prompt.ts`, `report-markdown.ts` | Fix prompts for coding agents and Markdown export |
 
-The deterministic rule engine is the audit; the LLM summary is an optional
-extra. **TinyFish Search + Fetch are the only required keys** — without a
-Gemini key, audits succeed with `aiSummary.generated=false` and the UI shows
-the rule-based summary instead. An invalid key or Gemini outage never fails
-an audit (the warning is surfaced, the audit still returns 200).
+Key properties:
 
-To enable it, get a free Gemini API key at https://aistudio.google.com
-("Get API key"), then either:
+- Live-only audits: every Fetch body sends `ttl: 0` and `/api/audit` responds `Cache-Control: no-store`, so nothing is ever served from or written to a cache. The report shows a Live badge with `fetchedAt`.
+- Node runtime with `maxDuration = 120`; the client aborts at 150s.
+- Failures are structured: a page that blocks bots or sits behind a login still returns a 200 report containing an explicit fail check and a P0 fix.
 
-```bash
-# server env fallback
-echo 'GEMINI_API_KEY=AIza...' >> .env
-```
+## Supported LLM Providers
 
-or pass it per-request (BYOK, stays server-side via `/api/audit`):
+The audit needs no LLM. Providers are only for the optional executive summary, and generation is server-side only.
 
-```json
-{ "url": "https://example.com/page", "llmProvider": "gemini", "llmKey": "AIza..." }
-```
+| Provider | Model | Status | How it is called |
+|---|---|---|---|
+| Google Gemini | `gemini-2.0-flash` | Supported, optional | REST `generateContent`, key sent in the `x-goog-api-key` header, 25s server timeout |
+| None | n/a | Default when no key is present | The rule engine's own summary is shown instead |
 
-Uses model `gemini-2.0-flash` (`generateContent`, 25s server timeout).
+- The client picks `llmProvider` as `gemini` or `none` in the request body (validated by Zod).
+- Without a usable key an audit still succeeds (`aiSummary.generated=false`). A bad key or a Gemini outage never fails an audit.
+- Generation parameters are server-owned: a caller can never change the model, temperature, or token budget.
+- Adding another provider is a contained change: extend `getAiSummary` in `lib/llm.ts` and the `llmProvider` enum in `app/api/audit/route.ts`.
+
+## How TinyFish Is Used
+
+TinyFish provides both live probes. The browser never talks to TinyFish directly; all calls happen inside `app/api/audit/route.ts` with the key in the `X-API-Key` header.
+
+Endpoints used, 4 calls per audit:
+
+| Endpoint | Calls | What it sends | What SiteScore gets from it |
+|---|---|---|---|
+| `POST https://api.fetch.tinyfish.ai` | 2, in parallel (Phase A): once with `format: "html"`, once with `format: "markdown"` | `{ urls: [url], format, links: true, image_links: true, ttl: 0, per_url_timeout_ms: 100000 }` | Title, description, language, author, published date, page text (HTML and Markdown), link and image counts, per-page latency, final URL after redirects |
+| `GET https://api.search.tinyfish.ai?query=...` | 2, in parallel (Phase B) | Indexation probe: `query=site:<domain> "<slug words>"` with `include_domains=<domain>`. Ranking probe: `query=<target query>` | Whether the exact URL surfaces for the site query, its rank position for the target query, total results, and the competitor URLs ranking above it |
+
+- `ttl: 0` on every Fetch call forces a fresh crawl; a saved copy is never used (PRD requirement 5).
+- The target query is user-supplied or auto-derived from the fetched page's title, H1, or meta description.
+- Error mapping: `401/403` from TinyFish becomes `invalid_api_key`, `429` becomes `rate_limited` with `Retry-After`, `5xx` becomes `tinyfish_unavailable`.
+- Free-tier limits to expect: Search 30 req/min, Fetch 150 URLs/min.
+- Upstream docs: https://docs.tinyfish.ai, keys: https://agent.tinyfish.ai/api-keys
+
+## Architectural Decisions
+
+**Why BYOK (bring your own key) by default.**
+
+- Each audit makes 4 metered upstream calls and can run for up to 120 seconds. An unauthenticated public endpoint with a server key fallback is, verbatim from the security review, "an unauthenticated, unmetered credit card with the merchant's name on it".
+- So the server key is used only when `ALLOW_PLATFORM_KEY` explicitly permits it, and that flag is `false` in production. The live deployment was verified: a keyless request returns `400 missing_api_key` and costs the developer nothing.
+- Keys are never echoed in responses or logs. Logs store a truncated HMAC-SHA256 fingerprint instead. In the UI, keys live in page memory for the duration of a request and are never persisted.
+
+**Minimal footprint: one framework, a short dependency list, no backend services.**
+
+- The app deliberately avoids extra frameworks and libraries: no CSS component kit, no state manager, no ORM, no database, no auth provider, no persistent server. Seven runtime packages (`next`, `react`, `react-dom`, `cheerio`, `zod`, `motion`, `@phosphor-icons/react`) plus Tailwind's build-time PostCSS plugin; all tooling stays in devDependencies.
+- The goal is fast, cheap startup on free hosting: a stateless serverless function on Vercel Hobby cold-starts with nothing to connect to and no migrations to run, and the whole app fits the free tier with zero paid add-ons.
+
+**Deterministic engine first, LLM second.**
+
+- The score comes from measured values in the fetched HTML/Markdown and the search results, so it is reproducible and testable offline (`npm test` proves good pages outscore thin ones with no network).
+- The LLM only re-phrases findings into an executive summary, and any LLM failure degrades to the rule-based summary instead of failing the audit.
+
+**Live-first, single endpoint.**
+
+- `ttl: 0` plus `Cache-Control: no-store` everywhere means a report always reflects the page as it is right now.
+- Everything (validation, gating, fetching, searching, scoring, LLM) happens in one route handler. Fewer moving parts, and no secret ever leaves the server.
+
+## Security Techniques
+
+The full threat model, findings by severity, and verification live in `docs/SECURITY.md`. In short, from `lib/security/`:
+
+- Pre-flight gate (`gate.ts`): optional shared-token auth (constant-time compare), per-minute/hour/day rate limits on both the key fingerprint and the client IP, concurrency semaphores, and platform-wide daily budget ceilings. Every rejection happens before any upstream call, so blocked requests cost nothing.
+- Fail-closed: if the configured Redis backend is unreachable, requests are denied with 503 rather than treated as unlimited.
+- SSRF defense (`url-guard.ts`): strict URL parsing, CIDR blocks for private, link-local, CGNAT, multicast, and cloud-metadata ranges, then DNS resolution with a re-check of the actual address.
+- Crypto (`crypto.ts`): AES-256-GCM with AAD binding, random 96-bit IVs, a `kid: key` keyring for zero-downtime rotation, and revocation by deleting a key id. Storage refuses to persist without a keyring.
+- Redaction (`redact.ts`) and output hygiene: client errors pass a fixed allow-list of safe messages, upstream detail is redacted in logs, and no stack trace ever reaches a browser.
+- Prompt-injection defense (`llm.ts`): page content and user queries are control-char-stripped, length-capped, and wrapped in BEGIN/END untrusted-data delimiters; the model runs single-shot with no tools, and the Gemini key travels in a header, never a query string.
+- Hardened surfaces: response headers applied to every route in `next.config.js` (CSP with `frame-ancestors 'none'` and no wildcard `connect-src`, HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, COOP/CORP, `poweredByHeader: false`), and in the route itself a 16 KB request body cap with strict locked Zod schemas.
+- Audit log (`audit-log.ts`): hash-chained JSON events recording key fingerprints, token counts, latency, and upstream call counts, with anomaly events on usage spikes.
+- Concurrency-slot release is guaranteed in a `finally` block, because a leaked slot would slowly starve the service until all traffic is refused.
+
+## Reference Docs
+
+For a deep understanding, in reading order:
+
+| Doc | What it covers |
+|---|---|
+| `docs/PRD.md` | The 8 product requirements the build must satisfy |
+| `docs/PRODUCT.md` | Target users, positioning, capabilities and constraints, product principles |
+| `docs/DESIGN.md` | The UI design system: palette, typography, layout, component rules |
+| `docs/SECURITY.md` | Threat model, findings by severity, controls in place, operational notes |
+| `.env.example` | Every environment variable with defaults and cost-protection knobs |
+| `lib/selftest.ts` + `lib/security/selftest.ts` | Executable specification of engine and security behavior |
+| `app/api/audit/route.ts` | The whole server-side story end to end |
+
+Contributors: run `npm test` before opening a PR; both self-tests exit non-zero on failure and are safe for CI.
+
+## Licence
+
+MIT. See LICENSE.
