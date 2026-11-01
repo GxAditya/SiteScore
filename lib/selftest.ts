@@ -144,6 +144,48 @@ const again = runAuditEngine({
 assert.deepEqual(scoreFromChecks(again.checks), good.scores);
 assert.deepEqual(again.checks, good.checks);
 
+// 7. A title is only "missing" when the fetched copy could be checked.
+const shellOnly = runAuditEngine({
+  url: "https://openpact.app",
+  finalUrl: "https://openpact.app",
+  html: "<html><body><div id=root></div></body></html>",
+  markdownText: goodMarkdown,
+  latencyMs: 700,
+  reportedTitle: null,
+  siteResults: [{ url: "https://openpact.app", title: "OpenPact | Freelance Contract Builder", position: 1 }],
+  rankingResults: [],
+});
+const shellTitle = shellOnly.checks.find((c) => c.id === "r-title")!;
+assert.equal(shellTitle.status, "warn", "search-verified title must not read as a fail");
+assert.match(shellTitle.evidence, /OpenPact \| Freelance Contract Builder/, "evidence must cite the title search already shows");
+assert.ok(
+  !shellTitle.evidence.startsWith("0 <title> tags found"),
+  `must not claim the tag is absent: ${shellTitle.evidence}`
+);
+assert.ok(
+  !shellOnly.fixes.some((f) => f.title.startsWith("Add the missing <title> tag")),
+  "must not tell the site to add a title it already has"
+);
+
+const noEvidence = runAuditEngine({
+  url: "https://linear.app",
+  finalUrl: "https://linear.app",
+  html: "",
+  markdownText: goodMarkdown,
+  latencyMs: 700,
+  siteResults: [],
+  rankingResults: [],
+});
+assert.equal(noEvidence.checks.find((c) => c.id === "r-title")!.status, "warn");
+assert.match(noEvidence.checks.find((c) => c.id === "r-title")!.evidence, /unmeasurable/);
+
+// A fetched copy that does contain head markup still gets a real absence claim.
+assert.equal(thin.checks.find((c) => c.id === "r-title")!.status, "fail");
+assert.ok(
+  thin.fixes.some((f) => f.title.startsWith("Add the missing <title> tag")),
+  "confirmed-absent title must still produce the P0 fix"
+);
+
 // ---- Example output ----
 console.log("GOOD:", JSON.stringify(good.scores), `checks=${good.checks.length} fixes=${good.fixes.length} query="${good.query}"(${good.querySource})`);
 console.log("THIN:", JSON.stringify(thin.scores), `checks=${thin.checks.length} fixes=${thin.fixes.length} query="${thin.query}"(${thin.querySource})`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   ChartLineUp,
@@ -33,12 +33,13 @@ interface OutputPanelProps {
   onRetry: () => void;
 }
 
+/** Tab labels are written for a first-time reader, not an SEO. */
 const TABS = [
-  { id: "overview" as ReportTabId, label: "Overview", icon: Gauge },
+  { id: "overview" as ReportTabId, label: "Summary", icon: Gauge },
   { id: "fixes" as ReportTabId, label: "Fixes", icon: Wrench },
-  { id: "visibility" as ReportTabId, label: "Visibility", icon: ChartLineUp },
-  { id: "readability" as ReportTabId, label: "Readability", icon: FileText },
-  { id: "evidence" as ReportTabId, label: "Evidence", icon: Code },
+  { id: "visibility" as ReportTabId, label: "Search", icon: ChartLineUp },
+  { id: "readability" as ReportTabId, label: "Reading", icon: FileText },
+  { id: "evidence" as ReportTabId, label: "Proof", icon: Code },
 ];
 
 export default function OutputPanel({
@@ -50,17 +51,14 @@ export default function OutputPanel({
   onSelectTab,
   onRetry,
 }: OutputPanelProps) {
-  const reduceMotion = useReducedMotion();
-  const tabsListRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [technical, setTechnical] = useState(false);
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (
-      e.key !== "ArrowRight" &&
-      e.key !== "ArrowLeft" &&
-      e.key !== "Home" &&
-      e.key !== "End"
-    )
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") {
       return;
+    }
     e.preventDefault();
     const idx = TABS.findIndex((t) => t.id === activeTab);
     let nextIndex = idx;
@@ -71,10 +69,7 @@ export default function OutputPanel({
     const next = TABS[nextIndex];
     onSelectTab(next.id);
     requestAnimationFrame(() => {
-      const el = tabsListRef.current?.querySelector<HTMLElement>(
-        `#tab-${next.id}`,
-      );
-      el?.focus();
+      tabsRef.current?.querySelector<HTMLElement>(`#tab-${next.id}`)?.focus();
     });
   }
 
@@ -83,87 +78,81 @@ export default function OutputPanel({
 
   return (
     <section
-      aria-label="Audit Output Panel"
-      className="flex h-full w-full flex-col bg-white dark:bg-[#0E140F]"
+      aria-label="Audit report"
+      className="flex h-full w-full flex-col bg-[var(--surface)]"
     >
-      {/* Workspace Tabs Header (Bolt / Lovable style) */}
-      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sage-200/80 bg-sage-50/50 px-4 dark:border-sage-800/80 dark:bg-[#151D16]/60">
+      {/* Tab strip with the technical-detail switch */}
+      <div className="flex h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--surface-border)] bg-[var(--landing-card)] px-2.5 sm:px-4">
         <div
-          ref={tabsListRef}
+          ref={tabsRef}
           role="tablist"
-          aria-label="Output Views"
+          aria-label="Report sections"
           onKeyDown={handleKeyDown}
-          className="no-scrollbar flex items-center gap-1 overflow-x-auto py-1"
+          className="no-scrollbar flex min-w-0 items-center gap-1 overflow-x-auto py-1"
         >
           {TABS.map((tab) => {
-            const isSelected = activeTab === tab.id;
+            const selected = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 role="tab"
                 id={`tab-${tab.id}`}
-                aria-selected={isSelected}
-                tabIndex={isSelected ? 0 : -1}
+                aria-selected={selected}
+                tabIndex={selected ? 0 : -1}
                 onClick={() => onSelectTab(tab.id)}
-                className={`relative inline-flex min-h-[36px] items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                  isSelected
-                    ? "bg-white text-sage-950 shadow-2xs dark:bg-[#1E271F] dark:text-sage-100"
-                    : "text-sage-600 hover:bg-white/60 hover:text-sage-900 dark:text-sage-400 dark:hover:bg-sage-900/40 dark:hover:text-sage-200"
-                }`}
+                className="seg-tab"
               >
-                <tab.icon className="h-4 w-4" weight={isSelected ? "bold" : "regular"} />
+                <tab.icon
+                  className="h-4 w-4"
+                  weight={selected ? "bold" : "regular"}
+                  aria-hidden="true"
+                />
                 <span>{tab.label}</span>
-
                 {tab.id === "fixes" && totalFixes > 0 && (
                   <span
-                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                      p0Count > 0
-                        ? "bg-coral-500 text-white"
-                        : "bg-sage-200 text-sage-800 dark:bg-sage-800 dark:text-sage-200"
-                    }`}
+                    className={`seg-count ${p0Count > 0 ? "seg-count--alert" : ""}`}
                   >
                     {totalFixes}
                   </span>
-                )}
-
-                {isSelected && (
-                  <motion.span
-                    layoutId="active-tab-highlight"
-                    className="absolute inset-0 rounded-xl border border-sage-300/80 dark:border-sage-700/80 pointer-events-none"
-                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                  />
                 )}
               </button>
             );
           })}
         </div>
+
+        <label
+          className="switch-row hidden md:inline-flex"
+          title="Show the measured values and technical names behind every finding"
+        >
+          <span>Technical detail</span>
+          <input
+            type="checkbox"
+            className="sr-only"
+            checked={technical}
+            onChange={(e) => setTechnical(e.target.checked)}
+          />
+          <span
+            aria-hidden="true"
+            className={`switch ${technical ? "switch--on" : ""}`}
+          >
+            <span className="switch__knob" />
+          </span>
+        </label>
       </div>
 
-      {/* Main Panel Content Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
-          {/* Loading state */}
-          {loading && (
-            <div className="py-6">
-              <LoadingStages stage={stage} />
-            </div>
-          )}
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+        <div className="mx-auto w-full max-w-3xl space-y-5">
+          {loading && <LoadingStages stage={stage} />}
 
-          {/* Error state */}
-          {failure && !loading && (
-            <div className="py-6">
-              <ErrorPanel failure={failure} onRetry={onRetry} />
-            </div>
-          )}
+          {!loading && failure && <ErrorPanel failure={failure} onRetry={onRetry} />}
 
-          {/* Success state - active tab renderer */}
           {report && !loading && (
             <motion.div
               key={activeTab}
-              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              initial={reduce ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-6"
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="space-y-5"
             >
               {activeTab === "overview" && (
                 <>
@@ -189,6 +178,7 @@ export default function OutputPanel({
                     visibility={report.score.visibility}
                     technical={report.score.technical}
                     checks={report.checks}
+                    technicalDetail={technical}
                   />
 
                   <ConnectionBanner
@@ -196,7 +186,7 @@ export default function OutputPanel({
                     correlation={report.connection.correlation}
                   />
 
-                  <FetchAlerts report={report} />
+                  <FetchAlerts report={report} technicalDetail={technical} />
                 </>
               )}
 
@@ -210,26 +200,27 @@ export default function OutputPanel({
               )}
 
               {activeTab === "visibility" && (
-                <VisibilityPanel report={report} />
+                <VisibilityPanel report={report} technicalDetail={technical} />
               )}
 
               {activeTab === "readability" && (
-                <ReadabilityPanel report={report} />
+                <ReadabilityPanel report={report} technicalDetail={technical} />
               )}
 
               {activeTab === "evidence" && (
                 <>
-                  {report.aiSummary && !report.aiSummary.generated && (
-                    <div className="rounded-xl border border-sage-200 bg-sage-50/60 p-3.5 text-xs text-sage-700 dark:border-sage-800 dark:bg-sage-950/40 dark:text-sage-300">
-                      A rule-based summary is shown above. Add a Gemini API key under Settings to also get an AI-written executive briefing.
+                  {!report.aiSummary.generated && (
+                    <div className="inset px-3.5 py-3 text-sm leading-relaxed text-[var(--text-muted)]">
+                      The summary above is produced by the scoring rules, which
+                      run the same way every time. Adding a Google Gemini key in
+                      settings also produces a written briefing.
                     </div>
                   )}
                   <RawEvidence report={report} />
                 </>
               )}
 
-              {/* Docked Export Bar */}
-              <div className="pt-4 border-t border-sage-200/80 dark:border-sage-800/80">
+              <div className="pt-2">
                 <ExportBar report={report} />
               </div>
             </motion.div>

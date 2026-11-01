@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CaretDown, Code, FileText, MagnifyingGlass } from "@phosphor-icons/react";
 import type { AuditReport } from "@/lib/audit-types";
 import { cn, CopyButton } from "@/lib/ui";
+import { Collapse } from "./report/Collapse";
+import { Term } from "./report/Term";
 
 const EXCERPT_LIMIT = 800;
 
@@ -13,41 +14,39 @@ function EvidenceSection({
   title,
   meta,
   copyValue,
-  defaultOpen,
   children,
 }: {
   icon: typeof FileText;
   title: string;
   meta: string;
   copyValue?: string;
-  defaultOpen: boolean;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const reduce = useReducedMotion();
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3">
-        <Icon
-          className="h-4 w-4 shrink-0 text-sage-500 dark:text-sage-400"
-          aria-hidden="true"
-        />
+    <div className="panel overflow-hidden">
+      <div className="flex items-center gap-2 px-3.5 py-2.5">
+        <span className="inset flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--text-subtle)]">
+          <Icon className="h-3.5 w-3.5" weight="duotone" aria-hidden="true" />
+        </span>
         <button
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
-          <span className="min-w-0 flex-1 truncate text-xs sm:text-sm font-semibold text-sage-900 dark:text-sage-100">
-            {title}{" "}
-            <span className="font-normal tabular-nums text-sage-500 dark:text-sage-400">
-              ({meta})
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold leading-snug tracking-tight">
+              {title}
+            </span>
+            <span className="block truncate font-mono text-xs tabular-nums text-[var(--text-subtle)]">
+              {meta}
             </span>
           </span>
           <CaretDown
             className={cn(
-              "h-3.5 w-3.5 shrink-0 text-sage-500 transition-transform dark:text-sage-400",
+              "h-3.5 w-3.5 shrink-0 text-[var(--text-subtle)] transition-transform",
               open && "rotate-180",
             )}
             aria-hidden="true"
@@ -57,24 +56,12 @@ function EvidenceSection({
           <CopyButton text={copyValue} label={`Copy ${title}`} />
         ) : null}
       </div>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key="body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={
-              reduce ? { duration: 0 } : { duration: 0.25, ease: "easeOut" }
-            }
-            className="overflow-hidden"
-          >
-            <div className="border-t border-sage-100 p-4 dark:border-sage-800">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+      <Collapse open={open}>
+        <div className="border-t border-[var(--surface-border)] p-3.5">
+          {children}
+        </div>
+      </Collapse>
     </div>
   );
 }
@@ -114,74 +101,70 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
       aria-label="Raw evidence"
       className="w-full scroll-mt-24 space-y-4"
     >
-      <div>
-        <h2 className="text-lg font-bold text-sage-950 dark:text-sage-50">
-          Raw Data & Evidence
-        </h2>
-        <p className="mt-0.5 text-xs text-sage-600 dark:text-sage-400">
-          Unedited responses from the page fetch and the search checks.
+      <div className="panel p-4 sm:p-5">
+        <h2 className="panel-title">The unedited receipts</h2>
+        <p className="panel-sub mt-1">
+          Everything above is a reading of these. Nothing here is summarised or
+          cleaned up: this is what the page and the search checks sent back.
         </p>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-2.5">
         <EvidenceSection
           icon={FileText}
-          title="Page Text Excerpt (Markdown)"
-          meta={`${excerpt.length} chars · ${report.fetch.wordCount} words`}
+          title="The text a reader pulled out"
+          meta={`${excerpt.length} characters · ${report.fetch.wordCount} words`}
           copyValue={excerpt || undefined}
-          defaultOpen={false}
         >
-          <pre className="max-h-96 overflow-auto rounded-xl bg-sage-50/60 p-3 font-mono text-xs leading-relaxed text-sage-900 dark:bg-[#111712] dark:text-sage-200">
-            <code>{visible || "(no page text was returned)"}</code>
+          <p className="panel-sub mb-2 text-sm leading-relaxed">
+            <Term k="markdown">Plain text</Term> is what most AI tools are
+            handed instead of your page&rsquo;s design.
+          </p>
+          <pre className="code-block__body max-h-96 rounded-xl border border-[var(--landing-console-edge)] bg-[var(--landing-console)]">
+            {visible || "The reader came back with no text at all."}
           </pre>
-          {truncated && (
+          {truncated ? (
             <button
               type="button"
               aria-expanded={showAll}
               onClick={() => setShowAll((v) => !v)}
-              className="mt-2 text-xs font-semibold tabular-nums text-sage-700 transition-colors hover:text-sage-950 dark:text-sage-300 dark:hover:text-sage-100"
+              className="composer-chip mt-2"
             >
-              {showAll
-                ? "Show less"
-                : `Show full excerpt (${excerpt.length} chars)`}
+              {showAll ? "Show less" : `Show all ${excerpt.length} characters`}
             </button>
-          )}
+          ) : null}
         </EvidenceSection>
 
         <EvidenceSection
           icon={Code}
-          title="Search JSON (Indexing & Rankings)"
-          meta="raw response payload"
+          title="The raw search answers"
+          meta="exactly what the search service returned"
           copyValue={searchJson}
-          defaultOpen={false}
         >
-          <pre className="max-h-96 overflow-auto rounded-xl bg-sage-50/60 p-3 font-mono text-xs leading-relaxed text-sage-900 dark:bg-[#111712] dark:text-sage-200">
-            <code>{searchJson}</code>
+          <pre className="code-block__body max-h-96 rounded-xl border border-[var(--landing-console-edge)] bg-[var(--landing-console)]">
+            {searchJson}
           </pre>
         </EvidenceSection>
 
         <EvidenceSection
           icon={MagnifyingGlass}
-          title="Search Queries & Fetch Logs"
-          meta={`${report.raw.fetchErrors.length} error(s) · ${report.raw.searchQueries.length} searches run`}
+          title="What we asked, and what failed"
+          meta={`${report.raw.fetchErrors.length} errors · ${report.raw.searchQueries.length} searches run`}
           copyValue={probeText}
-          defaultOpen={false}
         >
-          <div className="grid gap-3 text-xs sm:text-sm">
+          <div className="grid gap-3.5">
             <div>
-              <h3 className="font-mono text-xs font-bold text-sage-500 dark:text-sage-400">
-                SEARCHES RUN
-              </h3>
+              <h3 className="panel-eyebrow text-xs">Searches run</h3>
               {report.raw.searchQueries.length === 0 ? (
-                <p className="mt-1 font-mono text-xs text-sage-800 dark:text-sage-200">
+                <p className="mt-1 font-mono text-xs text-[var(--text-muted)]">
                   none recorded
                 </p>
               ) : (
-                <ul className="mt-1 grid gap-1">
+                <ul className="mt-1 space-y-1">
                   {report.raw.searchQueries.map((q) => (
                     <li
                       key={q}
-                      className="truncate font-mono text-xs text-sage-800 dark:text-sage-200"
+                      className="truncate font-mono text-xs text-[var(--text-muted)]"
                       title={q}
                     >
                       {q}
@@ -192,19 +175,18 @@ export default function RawEvidence({ report }: { report: AuditReport }) {
             </div>
 
             <div>
-              <h3 className="font-mono text-xs font-bold text-sage-500 dark:text-sage-400">
-                FETCH DIAGNOSTICS
-              </h3>
+              <h3 className="panel-eyebrow text-xs">Read attempts</h3>
               {report.raw.fetchErrors.length === 0 ? (
-                <p className="mt-1 font-mono text-xs text-sage-800 dark:text-sage-200">
-                  Clean fetch - both the HTML and text versions of the page loaded fully.
+                <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
+                  Both reads succeeded: the page&rsquo;s markup and its plain
+                  text came back complete.
                 </p>
               ) : (
-                <ul className="mt-1 grid gap-1">
+                <ul className="mt-1 space-y-1">
                   {report.raw.fetchErrors.map((e, i) => (
                     <li
                       key={`${e.url}-${i}`}
-                      className="font-mono text-xs text-coral-700 dark:text-coral-300"
+                      className="break-words font-mono text-xs leading-relaxed text-[var(--fail-strong)]"
                     >
                       {e.url}: {e.error}
                       {typeof e.status === "number" ? ` (${e.status})` : ""}

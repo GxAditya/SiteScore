@@ -751,6 +751,9 @@ export async function POST(req: NextRequest) {
       siteResults: engineSiteResults,
       rankingResults: engineRankingResults,
       fetchError: errCodes.length > 0 ? errCodes.join(" ") : null,
+      // The Fetch API reads the title itself; pass it so a copy that arrived
+      // without a <title> element is corroborated instead of called missing.
+      reportedTitle: pageTitle,
     });
     // Engine-derived query is canonical for the report. In practice it matches
     // the route-derived query used for the ranking probe above (same page

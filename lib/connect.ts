@@ -32,10 +32,18 @@ export function buildConnection(input: ConnectionInput): Connection {
 
   const canRead: string[] = [];
   const cantRead: string[] = [];
-  if (facts.title) canRead.push(`title (${facts.titleLength} chars)`);
-  else cantRead.push("no <title> (0 chars)");
+  // Head-level markup we never received is not the same as a tag that is absent.
+  const sawHead = facts.headObserved;
+  if (facts.titleSource === "html") canRead.push(`title (${facts.titleLength} chars)`);
+  else if (facts.title)
+    cantRead.push(
+      `no <title> in the fetched copy (${facts.titleLength}-char title visible only in ${facts.titleSource === "search" ? "search results" : "the fetch metadata"})`
+    );
+  else if (sawHead) cantRead.push("no <title> (0 chars)");
+  else cantRead.push("title not in the fetched copy (0 head-level tags read)");
   if (facts.metaDescription) canRead.push(`meta description (${facts.metaDescriptionLength} chars)`);
-  else cantRead.push("no meta description (0 chars)");
+  else if (sawHead) cantRead.push("no meta description (0 chars)");
+  else cantRead.push("meta description not in the fetched copy (0 head-level tags read)");
   if (facts.h1Count === 1) canRead.push(`1 H1 ("${clip(facts.h1Texts[0] ?? "", 50)}")`);
   else cantRead.push(`${facts.h1Count} H1s (expected 1)`);
   canRead.push(`${facts.wordCount} body words`);
@@ -48,10 +56,21 @@ export function buildConnection(input: ConnectionInput): Connection {
       : `does not appear in the ${input.resultCount} results we saw`;
   const indexState = input.indexed ? "is indexed" : "is not found by its exact URL";
 
+  const titlePhrase = facts.title
+    ? `a ${facts.titleLength}-char title${facts.titleSource === "html" ? "" : " that only " + (facts.titleSource === "search" ? "search results" : "the fetch metadata") + " shows"}`
+    : sawHead
+      ? "no title"
+      : "a title the fetched copy did not expose";
+  const metaPhrase = facts.metaDescription
+    ? `a ${facts.metaDescriptionLength}-char meta description`
+    : sawHead
+      ? "no meta description"
+      : "a meta description the fetched copy did not expose";
+
   const summary =
     `A fresh fetch read ${facts.wordCount} words under ${facts.h1Count + facts.h2Count} top-level headings with ` +
-    `${facts.title ? `a ${facts.titleLength}-char title` : "no title"} and ` +
-    `${facts.metaDescription ? `a ${facts.metaDescriptionLength}-char meta description` : "no meta description"}. ` +
+    `${titlePhrase} and ` +
+    `${metaPhrase}. ` +
     `AI tools CAN read: ${canRead.join("; ")}.` +
     (cantRead.length > 0 ? ` They CANNOT use: ${cantRead.join("; ")}.` : ` No readability blockers found.`) +
     ` In search, the page ${indexState} and ${rankState} for "${clip(q, 60)}" against ${input.competitorCount} competing pages.`;
@@ -76,7 +95,7 @@ export function buildConnection(input: ConnectionInput): Connection {
 
   const correlation =
     `Because a fresh fetch reads ${facts.wordCount} words with ${facts.h1Count === 1 ? "a single H1" : `${facts.h1Count} H1s`} and ` +
-    `${facts.metaDescription ? `a ${facts.metaDescriptionLength}-char meta description` : "no meta description"}, ${snippetNote}. ` +
+    `${metaPhrase}, ${snippetNote}. ` +
     `That readability profile shows up directly in the search outcome: the page ${rankState} for "${clip(q, 60)}"${competitorNote}. ` +
     `Fix the on-page reading side first - ${schemaNote} - then re-check ranking, since ${facts.wordCount < 300 ? `${facts.wordCount} words cannot beat longer pages for citations` : `every added structured fact raises citation odds without new backlinks`}.`;
 

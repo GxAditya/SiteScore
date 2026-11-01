@@ -28,11 +28,22 @@ export interface AnalyzeInput {
   rankingResults?: SearchResultItem[];
   /** Fetch error code (bot_blocked, login_required, empty_content, …). */
   fetchError?: string | null;
+  /** Title reported by the Fetch API itself, outside the parsed HTML. */
+  reportedTitle?: string | null;
 }
+
+/**
+ * Where the page title was seen. `none` plus `headObserved: false` means the
+ * fetch never gave us head-level markup, so absence is not measurable.
+ */
+export type TitleSource = "html" | "metadata" | "search" | "none";
 
 export interface PageFacts {
   title: string;
   titleLength: number;
+  titleSource: TitleSource;
+  /** True when the fetched copy contained head-level markup to inspect. */
+  headObserved: boolean;
   metaDescription: string;
   metaDescriptionLength: number;
   h1Count: number;
@@ -147,13 +158,52 @@ function outer($: ReturnType<typeof load>, selector: string): string {
   }
 }
 
+/**
+ * The title Search already shows for this exact URL, if any. Corroborating
+ * evidence: a fetch that missed the head must not claim a missing title for a
+ * page that is already surfacing in results with one.
+ */
+export function searchTitleFor(
+  url: string,
+  finalUrl: string | null | undefined,
+  rankingResults?: SearchResultItem[],
+  siteResults?: SearchResultItem[]
+): string {
+  const targets = [normalizeUrl(url), normalizeUrl(finalUrl ?? url)];
+  for (const entry of [...(rankingResults ?? []), ...(siteResults ?? [])]) {
+    const n = normalizeUrl(entry.url);
+    if (n !== null && targets.includes(n)) {
+      const t = (entry.title ?? "").replace(/\s+/g, " ").trim();
+      if (t) return t;
+    }
+  }
+  return "";
+}
+
+export interface TitleSources {
+  reportedTitle?: string | null;
+  searchTitle?: string | null;
+}
+
 export function parsePageFacts(
   html: string,
-  markdownText?: string
+  markdownText?: string,
+  sources: TitleSources = {}
 ): PageFacts {
   const $ = load(html ?? "");
 
-  const title = $("title").first().text().replace(/\s+/g, " ").trim();
+  const htmlTitle = $("title").first().text().replace(/\s+/g, " ").trim();
+  const reported = (sources.reportedTitle ?? "").replace(/\s+/g, " ").trim();
+  const fromSearch = (sources.searchTitle ?? "").replace(/\s+/g, " ").trim();
+  const title = htmlTitle || reported || fromSearch;
+  const titleSource: TitleSource = htmlTitle
+    ? "html"
+    : reported
+      ? "metadata"
+      : fromSearch
+        ? "search"
+        : "none";
+  const headObserved = /<(head|title|meta|link)\b/i.test(html ?? "");
   const metaDescription = ($('meta[name="description"]').attr("content") ?? "").trim();
 
   const h1Texts = $("h1")
@@ -238,6 +288,8 @@ export function parsePageFacts(
   return {
     title,
     titleLength: title.length,
+    titleSource,
+    headObserved,
     metaDescription,
     metaDescriptionLength: metaDescription.length,
     h1Count: h1Texts.length,
@@ -284,46 +336,94 @@ export function parsePageFacts(
 }
 
 /**
+ * Absence is only a finding when the fetched copy contained head-level markup.
+ * A body-only or failed fetch makes these checks unverifiable, not failed.
+ */
+function notVisible(tag: string, copyChars: number): Pick<Check, "status" | "detail" | "evidence"> {
+  return {
+    status: "warn",
+    detail: `The copy our reader fetched carried no head markup, so the ${tag} could not be checked. This does not mean your page is missing it - it means this fetch could not see it.`,
+    evidence: `0 head-level tags in the ${copyChars}-char fetched copy - ${tag} unmeasurable from this fetch.`,
+  };
+}
+
+/**
  * Build the full check list (readability 40 / visibility 35 / technical 25).
  * Pure: same input → same output. Every evidence string cites measured values.
  */
 export function buildChecks(input: AnalyzeInput): Check[] {
-  const facts = parsePageFacts(input.html ?? "", input.markdownText);
+  const searchTitle = searchTitleFor(
+    input.url,
+    input.finalUrl,
+    input.rankingResults,
+    input.siteResults
+  );
+  const facts = parsePageFacts(input.html ?? "", input.markdownText, {
+    reportedTitle: input.reportedTitle,
+    searchTitle,
+  });
   const checks: Check[] = [];
   const q = (input.targetQuery ?? "").trim();
+  const copyChars = (input.html ?? "").length;
 
   // ---------- Readability ----------
-  if (!facts.title) {
+  if (facts.titleSource === "html") {
+    if (facts.titleLength >= 50 && facts.titleLength <= 60) {
+      checks.push({
+        id: "r-title", category: "readability", status: "pass",
+        label: "Title tag present (50–60 chars)",
+        detail: "The title is a good length to display fully in search results and for AI tools to quote.",
+        evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - within 50–60.`,
+      });
+    } else if (facts.titleLength >= 30 && facts.titleLength <= 80) {
+      checks.push({
+        id: "r-title", category: "readability", status: "warn",
+        label: "Title tag present (50–60 chars)",
+        detail: "The title exists but will likely be cut off or rewritten in search results.",
+        evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - outside 50–60.`,
+      });
+    } else {
+      checks.push({
+        id: "r-title", category: "readability", status: "fail",
+        label: "Title tag present (50–60 chars)",
+        detail: "The title is far outside the length that fits on screen, so search engines will rewrite it.",
+        evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - expected 50–60.`,
+      });
+    }
+  } else if (facts.title) {
+    // The title exists, but not in the HTML our reader received.
+    const seen =
+      facts.titleSource === "search"
+        ? `the search result for this URL shows "${clip(facts.title, 60)}"`
+        : `the fetch itself reported "${clip(facts.title, 60)}"`;
+    checks.push({
+      id: "r-title", category: "readability", status: "warn",
+      label: "Title tag present (50–60 chars)",
+      detail: "Your page does have a title, but it was not in the HTML we fetched, so a reader that only takes the markup gets the raw URL instead. Search engines that run scripts still find it.",
+      evidence: `1 title found outside the fetched copy (${seen}, ${facts.titleLength} chars); 0 <title> tags inside the ${copyChars}-char HTML we received.`,
+    });
+  } else if (facts.headObserved) {
     checks.push({
       id: "r-title", category: "readability", status: "fail",
       label: "Title tag present (50–60 chars)",
       detail: "The page has no <title> tag, so search results and AI tools fall back to showing the raw URL.",
-      evidence: "0 <title> tags found; title length is 0 chars (expected 50–60).",
-    });
-  } else if (facts.titleLength >= 50 && facts.titleLength <= 60) {
-    checks.push({
-      id: "r-title", category: "readability", status: "pass",
-      label: "Title tag present (50–60 chars)",
-      detail: "The title is a good length to display fully in search results and for AI tools to quote.",
-      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - within 50–60.`,
-    });
-  } else if (facts.titleLength >= 30 && facts.titleLength <= 80) {
-    checks.push({
-      id: "r-title", category: "readability", status: "warn",
-      label: "Title tag present (50–60 chars)",
-      detail: "The title exists but will likely be cut off or rewritten in search results.",
-      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - outside 50–60.`,
+      evidence: `0 <title> tags found in a fetched copy that does contain head markup (${copyChars} chars); title length is 0 chars (expected 50–60).`,
     });
   } else {
     checks.push({
-      id: "r-title", category: "readability", status: "fail",
+      id: "r-title", category: "readability", status: "warn",
       label: "Title tag present (50–60 chars)",
-      detail: "The title is far outside the length that fits on screen, so search engines will rewrite it.",
-      evidence: `title is ${facts.titleLength} chars ("${clip(facts.title, 80)}") - expected 50–60.`,
+      detail: "The copy our reader fetched carried no head markup, so the title could not be checked. This does not mean your page has no title - it means this fetch could not see one.",
+      evidence: `0 head-level tags and 0 <title> tags in the ${copyChars}-char fetched copy - unmeasurable from this fetch.`,
     });
   }
 
-  if (!facts.metaDescription) {
+  if (!facts.headObserved) {
+    checks.push({
+      id: "r-meta-description", category: "readability", label: "Meta description (120–160 chars)",
+      ...notVisible("meta description", copyChars),
+    });
+  } else if (!facts.metaDescription) {
     checks.push({
       id: "r-meta-description", category: "readability", status: "fail",
       label: "Meta description (120–160 chars)",
@@ -405,6 +505,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     label: "Open Graph tags (title/description/image)",
     detail: "Open Graph tags control the preview shown when the page is shared and help AI tools read its metadata.",
     evidence: `${facts.ogPresentCount}/3 OG tags present (og:title=${facts.ogTitle ? 1 : 0}, og:description=${facts.ogDescription ? 1 : 0}, og:image=${facts.ogImage ? 1 : 0}).`,
+    ...(facts.headObserved ? {} : notVisible("Open Graph tags", copyChars)),
   });
 
   checks.push({
@@ -420,6 +521,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     evidence: facts.canonical
       ? `canonical href="${clip(facts.canonical, 100)}" (${facts.canonicalIsAbsolute ? "absolute, 1 tag" : "relative, 1 tag"}).`
       : "0 canonical link tags found (expected 1 absolute URL).",
+    ...(facts.headObserved ? {} : notVisible("canonical link", copyChars)),
   });
 
   checks.push({
@@ -433,6 +535,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     evidence: facts.lang
       ? `<html lang="${facts.lang}"> present (1 attribute).`
       : "0 lang attributes on <html> (expected 1, e.g. lang=\"en\").",
+    ...(facts.headObserved ? {} : notVisible("language attribute", copyChars)),
   });
 
   if (facts.altCoveragePct === null) {
@@ -598,6 +701,7 @@ export function buildChecks(input: AnalyzeInput): Check[] {
     evidence: facts.hasViewport
       ? `1 viewport meta found (content="${clip(facts.viewportContent ?? "", 60)}").`
       : "0 viewport meta tags found (expected 1).",
+    ...(facts.headObserved ? {} : notVisible("viewport tag", copyChars)),
   });
 
   checks.push({

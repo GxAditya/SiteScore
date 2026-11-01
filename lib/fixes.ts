@@ -67,25 +67,49 @@ export function buildFixes(input: FixesInput): Fix[] {
   const push = (rank: number, priority: FixPriority, fix: Fix) =>
     out.push({ rank, priority, fix });
 
-  // ---- Missing / broken title ----
+  // ---- Title: only claim a missing tag when the fetched copy proved one ----
   const titleSt = statusOf(checks, "r-title");
-  if (titleSt !== "pass") {
+  const titleMeasurable = facts.titleSource !== "none" || facts.headObserved;
+  if (titleSt !== "pass" && titleMeasurable) {
     const after = candidateTitle(q, input.url);
-    push(10, titleSt === "fail" ? "P0" : "P1", {
-      priority: titleSt === "fail" ? "P0" : "P1",
-      title: facts.title ? `Rewrite the <title> tag (${facts.titleLength} chars → under 60)` : "Add the missing <title> tag (0 chars today)",
-      why: facts.title
-        ? `Your title is ${facts.titleLength} characters ("${clip(facts.title, 70)}"), outside the 50–60 range that displays fully, so search engines rewrite it and AI tools quote an unpredictable string.`
-        : `The page has 0 <title> tags: search engines and AI tools fall back to the raw URL "${clip(input.url, 70)}" for all ${facts.wordCount} words on the page.`,
-      how: `1. Edit the <head> section. 2. Set the title to exactly: ${after} (${after.length} chars). 3. Fetch the page again and confirm the title reads 50–60 chars.`,
-      codeBefore: facts.excerpts.titleTag || "<!-- no <title> tag found in <head> -->",
-      codeAfter: `<title>${after}</title>`,
-    });
+    if (facts.title && facts.titleSource !== "html") {
+      // A title exists; our fetch of the page markup just did not contain it.
+      const seen =
+        facts.titleSource === "search"
+          ? `the search result for this URL ("${clip(facts.title, 60)}")`
+          : `the fetch's own page metadata ("${clip(facts.title, 60)}")`;
+      push(10, "P1", {
+        priority: "P1",
+        title: `Send your page title in the HTML the server returns (${facts.titleLength} chars, 0 tags in the fetched copy)`,
+        why: `${capFirst(seen)} shows a title, but 0 <title> tags were found in the ${facts.wordCount}-word copy we fetched, so readers that do not run scripts fall back to the raw URL "${clip(input.url, 70)}".`,
+        how: `1. Put the title in the server-rendered head, not only in a script that sets it after load. 2. Set it to: ${after} (${after.length} chars). 3. Fetch the page with JavaScript disabled and confirm the <title> is in the response.`,
+        codeBefore: `<!-- fetched copy contains 0 <title> tags; ${seen} is ${facts.titleLength} chars -->`,
+        codeAfter: `<title>${facts.titleLength >= 50 && facts.titleLength <= 60 ? facts.title : after}</title>`,
+      });
+    } else if (facts.title) {
+      push(10, titleSt === "fail" ? "P0" : "P1", {
+        priority: titleSt === "fail" ? "P0" : "P1",
+        title: `Rewrite the <title> tag (${facts.titleLength} chars → under 60)`,
+        why: `Your title is ${facts.titleLength} characters ("${clip(facts.title, 70)}"), outside the 50–60 range that displays fully, so search engines rewrite it and AI tools quote an unpredictable string.`,
+        how: `1. Edit the <head> section. 2. Set the title to exactly: ${after} (${after.length} chars). 3. Fetch the page again and confirm the title reads 50–60 chars.`,
+        codeBefore: facts.excerpts.titleTag || "<!-- no <title> tag found in <head> -->",
+        codeAfter: `<title>${after}</title>`,
+      });
+    } else {
+      push(10, "P0", {
+        priority: "P0",
+        title: "Add the missing <title> tag (0 chars today)",
+        why: `The fetched copy has a <head> and 0 <title> tags in it: search engines and AI tools fall back to the raw URL "${clip(input.url, 70)}" for all ${facts.wordCount} words on the page.`,
+        how: `1. Edit the <head> section. 2. Set the title to exactly: ${after} (${after.length} chars). 3. Fetch the page again and confirm the title reads 50–60 chars.`,
+        codeBefore: facts.excerpts.titleTag || "<!-- no <title> tag found in <head> -->",
+        codeAfter: `<title>${after}</title>`,
+      });
+    }
   }
 
   // ---- Meta description ----
   const metaSt = statusOf(checks, "r-meta-description");
-  if (metaSt !== "pass") {
+  if (metaSt !== "pass" && facts.headObserved) {
     const after = candidateMeta(q, facts);
     push(20, "P1", {
       priority: "P1",
@@ -143,7 +167,7 @@ export function buildFixes(input: FixesInput): Fix[] {
 
   // ---- OG tags ----
   const ogSt = statusOf(checks, "r-og-tags");
-  if (ogSt !== "pass") {
+  if (ogSt !== "pass" && facts.headObserved) {
     const afterTitle = candidateTitle(q, input.url);
     push(60, ogSt === "fail" ? "P1" : "P2", {
       priority: ogSt === "fail" ? "P1" : "P2",
@@ -157,7 +181,7 @@ export function buildFixes(input: FixesInput): Fix[] {
 
   // ---- Canonical ----
   const canSt = statusOf(checks, "r-canonical");
-  if (canSt !== "pass") {
+  if (canSt !== "pass" && facts.headObserved) {
     push(70, "P1", {
       priority: "P1",
       title: facts.canonical ? `Use the full URL in the canonical tag ("${clip(facts.canonical, 50)}" is relative)` : "Add the missing canonical tag (0 tags today)",
@@ -171,7 +195,7 @@ export function buildFixes(input: FixesInput): Fix[] {
   }
 
   // ---- lang ----
-  if (statusOf(checks, "r-lang") !== "pass") {
+  if (statusOf(checks, "r-lang") !== "pass" && facts.headObserved) {
     push(80, "P2", {
       priority: "P2",
       title: "Set the page language (0 lang attributes today)",
@@ -314,7 +338,7 @@ export function buildFixes(input: FixesInput): Fix[] {
   }
 
   // ---- Viewport ----
-  if (statusOf(checks, "t-viewport") !== "pass") {
+  if (statusOf(checks, "t-viewport") !== "pass" && facts.headObserved) {
     push(140, "P1", {
       priority: "P1",
       title: "Add the viewport tag (0 tags today)",

@@ -10,19 +10,13 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion as usePrefersReducedMotion,
-} from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Check,
   CheckCircle,
   Copy,
   Moon,
   Sun,
-  WarningCircle,
-  XCircle,
 } from "@phosphor-icons/react";
 
 /** Join class names, dropping falsy values. */
@@ -35,56 +29,9 @@ export function cn(
 /** Re-exported so feature workstreams share one motion import. */
 export { useReducedMotion } from "motion/react";
 
-/** Brand mark with user requested sage palette */
-export function BrandMark({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden="true" className="shrink-0">
-      <rect width="28" height="28" rx="8" fill="#5C7057" />
-      <circle cx="14" cy="14" r="8.5" stroke="#ACC5A6" strokeWidth="1.8" fill="none" opacity="0.7" />
-      <path
-        d="M7 16a7 7 0 0 1 14 0"
-        stroke="#D1EDD3"
-        strokeWidth="2.2"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <circle cx="14" cy="16" r="2.2" fill="#D1EDD3" />
-    </svg>
-  );
-}
-
 /* ------------------------------------------------------------------ */
-/* Report dashboard tokens: Sage (#5C7057, #89A482, #ACC5A6, #D1EDD3)  */
-/* and Complementary Warm Terracotta / Coral (#D97757)                */
+/* Shared report primitives                                            */
 /* ------------------------------------------------------------------ */
-
-/** Score-grade text color. */
-export function gradeTextClass(grade?: string): string {
-  switch (grade) {
-    case "A":
-      return "text-sage-500 dark:text-sage-300";
-    case "B":
-      return "text-sage-400 dark:text-sage-200";
-    case "C":
-      return "text-amber-600 dark:text-amber-400";
-    default:
-      return "text-coral-500 dark:text-coral-400";
-  }
-}
-
-/** Tinted pill badge for a score grade. */
-export function gradeBadgeClass(grade?: string): string {
-  switch (grade) {
-    case "A":
-      return "bg-sage-100 text-sage-800 ring-1 ring-sage-500/30 dark:bg-sage-900/60 dark:text-sage-200 dark:ring-sage-400/30";
-    case "B":
-      return "bg-sage-50 text-sage-700 ring-1 ring-sage-300/30 dark:bg-sage-900/40 dark:text-sage-300 dark:ring-sage-300/30";
-    case "C":
-      return "bg-amber-50 text-amber-800 ring-1 ring-amber-500/30 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-400/30";
-    default:
-      return "bg-coral-50 text-coral-800 ring-1 ring-coral-500/30 dark:bg-coral-950/60 dark:text-coral-300 dark:ring-coral-400/30";
-  }
-}
 
 /** Clipboard copy with a textarea fallback. Resolves true on success. */
 export async function copyText(text: string): Promise<boolean> {
@@ -114,10 +61,13 @@ export function CopyButton({
   text,
   label,
   className,
+  tone = "light",
 }: {
   text: string;
   label: string;
   className?: string;
+  /** "dark" sits on a console surface, so it needs its own palette. */
+  tone?: "light" | "dark";
 }) {
   const { toast } = useToast();
   const [done, setDone] = useState(false);
@@ -138,8 +88,10 @@ export function CopyButton({
       onClick={onClick}
       aria-label={done ? "Copied to clipboard" : label}
       className={cn(
-        "inline-flex min-h-[28px] shrink-0 items-center gap-1 rounded-full border border-sage-200 px-2.5 py-0.5 text-xs font-medium text-sage-800 transition-colors hover:bg-sage-100/70",
-        "dark:border-sage-800 dark:text-sage-200 dark:hover:bg-sage-900/80",
+        "inline-flex min-h-[28px] shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+        tone === "dark"
+          ? "border-white/15 bg-white/10 text-[#DCEBD5] hover:bg-white/20"
+          : "border-sage-200 text-sage-800 hover:bg-sage-100/70 dark:border-sage-800 dark:text-sage-200 dark:hover:bg-sage-900/80",
         className,
       )}
     >
@@ -149,8 +101,7 @@ export function CopyButton({
   );
 }
 
-/** Entrance wrapper: fades up 24px to 0 once when scrolled into view.
- *  Renders statically when the user prefers reduced motion. */
+/** Entrance wrapper: fades up 24px to 0 once when scrolled into view. */
 export function Rise({
   children,
   delay = 0,
@@ -160,8 +111,6 @@ export function Rise({
   delay?: number;
   className?: string;
 }) {
-  const reduce = usePrefersReducedMotion();
-  if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
       className={className}
@@ -172,94 +121,6 @@ export function Rise({
     >
       {children}
     </motion.div>
-  );
-}
-
-type StatusTone = "pass" | "warn" | "fail";
-
-const STATUS_TONE: Record<
-  StatusTone,
-  {
-    Icon: typeof CheckCircle;
-    card: string;
-    head: string;
-    icon: string;
-    item: string;
-    sub: string;
-  }
-> = {
-  pass: {
-    Icon: CheckCircle,
-    card: "border-sage-200/90 dark:border-sage-800/80 bg-white dark:bg-[#151D16]",
-    head: "text-sage-700 dark:text-sage-200",
-    icon: "text-sage-500 dark:text-sage-300",
-    item: "text-sage-950 dark:text-sage-100",
-    sub: "text-sage-800/80 dark:text-sage-300/80",
-  },
-  warn: {
-    Icon: WarningCircle,
-    card: "border-amber-200/90 dark:border-amber-900/70 bg-white dark:bg-[#151D16]",
-    head: "text-amber-800 dark:text-amber-200",
-    icon: "text-amber-600 dark:text-amber-400",
-    item: "text-amber-950 dark:text-amber-100",
-    sub: "text-amber-900/80 dark:text-amber-200/80",
-  },
-  fail: {
-    Icon: XCircle,
-    card: "border-coral-200/90 dark:border-coral-900/70 bg-white dark:bg-[#151D16]",
-    head: "text-coral-800 dark:text-coral-200",
-    icon: "text-coral-500 dark:text-coral-400",
-    item: "text-coral-950 dark:text-coral-100",
-    sub: "text-coral-900/80 dark:text-coral-200/80",
-  },
-};
-
-/** CAN / Partial / CAN'T grouped check list with a status icon header. */
-export function StatusGroup({
-  title,
-  count,
-  tone,
-  items,
-  emptyText,
-}: {
-  title: string;
-  count: number;
-  tone: StatusTone;
-  items: Array<{ id: string; label: string; evidence: string }>;
-  emptyText: string;
-}) {
-  const t = STATUS_TONE[tone];
-  const Icon = t.Icon;
-  return (
-    <div
-      className={cn("card h-full p-4", t.card)}
-    >
-      <h3 className={cn("flex items-center gap-1.5 text-sm font-semibold", t.head)}>
-        <Icon className={cn("h-4 w-4 shrink-0", t.icon)} weight="fill" aria-hidden="true" />
-        <span>
-          {title} <span className="tabular-nums">({count})</span>
-        </span>
-      </h3>
-      {items.length === 0 ? (
-        <p className={cn("mt-1.5 text-sm", t.sub)}>{emptyText}</p>
-      ) : (
-        <ul className="mt-2 grid gap-2.5">
-          {items.map((c) => (
-            <li key={c.id} className={cn("flex gap-2 text-sm", t.item)}>
-              <Icon
-                className={cn("mt-0.5 h-4 w-4 shrink-0", t.icon)}
-                weight="fill"
-                aria-hidden="true"
-              />
-              <span className="min-w-0">
-                <span className="font-medium">{c.label}. </span>
-                <span className={t.sub}>{c.evidence}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

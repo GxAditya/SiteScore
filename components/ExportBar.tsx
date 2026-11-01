@@ -7,10 +7,8 @@ import {
 } from "@phosphor-icons/react";
 import type { AuditReport } from "@/lib/audit-types";
 import { buildAuditMarkdown } from "@/lib/report-markdown";
-import { cn, copyText, useToast } from "@/lib/ui";
-
-const SECONDARY_BUTTON =
-  "border border-sage-200 bg-white/70 text-sage-800 hover:bg-sage-100 dark:border-sage-800 dark:bg-transparent dark:text-sage-200 dark:hover:bg-sage-900";
+import { copyText, useToast } from "@/lib/ui";
+import { Term } from "./report/Term";
 
 export default function ExportBar({ report }: { report: AuditReport }) {
   const { toast } = useToast();
@@ -19,7 +17,7 @@ export default function ExportBar({ report }: { report: AuditReport }) {
     const ok = await copyText(buildAuditMarkdown(report));
     toast(
       ok
-        ? "Markdown copied to clipboard"
+        ? "Report copied. Paste it anywhere that takes text"
         : "Copy failed - your browser blocked clipboard access",
     );
   }
@@ -44,62 +42,37 @@ export default function ExportBar({ report }: { report: AuditReport }) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast("JSON downloaded");
+      toast("Saved the full data file");
     } catch {
       toast("Download failed in this browser");
     }
   }
 
   return (
-    <section
-      id="export"
-      aria-label="Export report"
-      className="no-print w-full"
-    >
-      <div className="card flex flex-wrap items-center justify-between gap-3 bg-sage-50/70 p-3.5 backdrop-blur-md dark:bg-[#161D17]/80 sm:p-4">
+    <section id="export" aria-label="Export report" className="no-print w-full">
+      <div className="panel flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4">
         <div>
-          <h3 className="eyebrow text-sage-900 dark:text-sage-100">
-            Export Audit Report
+          <h3 className="text-sm font-semibold leading-snug tracking-tight">
+            Take this with you
           </h3>
-          <p className="body-secondary mt-0.5 text-sage-500 dark:text-sage-400">
-            Download or copy formatted findings for client reports or coding agents.
+          <p className="panel-sub mt-0.5">
+            Copy it into a doc, hand it to a developer, or keep the{" "}
+            <Term k="html">raw data</Term> for your own tools.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleCopyMarkdown}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-xs transition-colors",
-              "bg-sage-500 text-white hover:bg-sage-600 active:scale-[0.98]",
-              "dark:bg-sage-200 dark:text-sage-950 dark:hover:bg-sage-100",
-            )}
-          >
-            <ClipboardText className="h-3.5 w-3.5" aria-hidden="true" weight="bold" />
-            Copy Markdown
+          <button type="button" onClick={handleCopyMarkdown} className="btn-primary">
+            <ClipboardText className="h-4 w-4" aria-hidden="true" weight="bold" />
+            <span className="text-sm">Copy the report</span>
           </button>
-          <button
-            type="button"
-            onClick={handleDownloadJson}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors active:scale-[0.98]",
-              SECONDARY_BUTTON,
-            )}
-          >
-            <DownloadSimple className="h-3.5 w-3.5" aria-hidden="true" weight="bold" />
-            Download JSON
+          <button type="button" onClick={handleDownloadJson} className="btn-secondary">
+            <DownloadSimple className="h-4 w-4" aria-hidden="true" weight="bold" />
+            <span className="text-sm">Download the data</span>
           </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors active:scale-[0.98]",
-              SECONDARY_BUTTON,
-            )}
-          >
-            <Printer className="h-3.5 w-3.5" aria-hidden="true" weight="bold" />
-            Print / PDF
+          <button type="button" onClick={() => window.print()} className="btn-secondary">
+            <Printer className="h-4 w-4" aria-hidden="true" weight="bold" />
+            <span className="text-sm">Print or save as PDF</span>
           </button>
         </div>
       </div>

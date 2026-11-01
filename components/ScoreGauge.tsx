@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { animate, motion, useInView, useReducedMotion } from "motion/react";
-import { Link as LinkIcon, MagnifyingGlass } from "@phosphor-icons/react";
+import { Globe, MagnifyingGlass } from "@phosphor-icons/react";
 import { gradeFor } from "@/lib/audit-types";
-import { cn, CopyButton, gradeBadgeClass, gradeTextClass } from "@/lib/ui";
+import { cn, CopyButton } from "@/lib/ui";
+import { AXES, axisVerdict, scoreInWords } from "@/lib/plain-language";
 
 interface ScoreGaugeProps {
   total: number;
@@ -18,11 +19,26 @@ interface ScoreGaugeProps {
   finalUrl: string;
 }
 
-const R = 54;
+const R = 66;
 const CIRC = 2 * Math.PI * R;
 
 function clamp(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const mins = Math.round((Date.now() - then) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins === 1) return "1 minute ago";
+  if (mins < 60) return `${mins} minutes ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export default function ScoreGauge({
@@ -39,158 +55,173 @@ export default function ScoreGauge({
   const g = grade ?? gradeFor(total);
   const pct = clamp(total);
   const reduce = useReducedMotion();
-  const [shown, setShown] = useState<number>(reduce ? pct : 0);
+  const [counted, setCounted] = useState(0);
+  const shown = reduce ? pct : counted;
   const gaugeRef = useRef<HTMLDivElement>(null);
   const inView = useInView(gaugeRef, { once: true, margin: "-40px" });
+  const verdict = axisVerdict(pct);
 
   useEffect(() => {
-    if (!inView || reduce) return;
+    if (reduce || !inView) return;
     const controls = animate(0, pct, {
       type: "spring",
-      stiffness: 48,
+      stiffness: 44,
       damping: 17,
-      onUpdate: (v) => setShown(Math.round(v)),
+      onUpdate: (v) => setCounted(Math.round(v)),
     });
     return () => controls.stop();
   }, [inView, pct, reduce]);
 
-  let fetchedLabel = fetchedAt;
-  try {
-    fetchedLabel = new Date(fetchedAt).toLocaleString();
-  } catch {
-    /* keep raw */
-  }
-
-  const subs = [
-    { label: "Readability", value: clamp(readability) },
-    { label: "Visibility", value: clamp(visibility) },
-    { label: "Technical", value: clamp(technical) },
+  const axes = [
+    { key: "readability" as const, value: clamp(readability) },
+    { key: "visibility" as const, value: clamp(visibility) },
+    { key: "technical" as const, value: clamp(technical) },
   ];
 
   return (
-    <section aria-label="Overall score" className="w-full">
-      <div className="card p-5 sm:flex-row sm:items-center sm:gap-6 sm:p-6 flex w-full flex-col gap-5">
-        <div ref={gaugeRef} className="relative mx-auto shrink-0 sm:mx-0">
-          <svg
-            viewBox="0 0 140 140"
-            width="150"
-            height="150"
-            role="img"
-            aria-label={`Overall score ${pct} out of 100, grade ${g}`}
-            className={cn("block", gradeTextClass(g))}
-          >
-            <circle
-              cx="70"
-              cy="70"
-              r={R}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="12"
-              className="text-sage-100 dark:text-sage-900"
-            />
-            <motion.circle
-              cx="70"
-              cy="70"
-              r={R}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={CIRC}
-              initial={reduce ? false : { strokeDashoffset: CIRC }}
-              whileInView={{ strokeDashoffset: CIRC * (1 - pct / 100) }}
-              viewport={{ once: true }}
-              transition={{ type: "spring", stiffness: 42, damping: 17 }}
-              transform="rotate(-90 70 70)"
-            />
-          </svg>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
-          >
-            <span className="text-3xl font-bold tabular-nums text-sage-950 dark:text-sage-50">
-              {shown}
-            </span>
-            <span
-              className={cn(
-                "mt-1 rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums",
-                gradeBadgeClass(g),
-              )}
-            >
-              Grade {g}
-            </span>
+    <section aria-label="Overall score" className="panel p-4 sm:p-5">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+        {/* The dial, with its verdict read out underneath rather than crowded
+            into the face. */}
+        <div
+          ref={gaugeRef}
+          className="mx-auto flex shrink-0 flex-col items-center gap-2.5 sm:mx-0"
+        >
+          <div className="gauge">
+            <div className="gauge__face">
+              <svg
+                viewBox="0 0 168 168"
+                className="gauge__svg"
+                role="img"
+                aria-label={`Score ${pct} out of 100, ${scoreInWords(pct)}`}
+              >
+                <circle
+                  cx="84"
+                  cy="84"
+                  r={R}
+                  fill="none"
+                  stroke="var(--surface-sunken)"
+                  strokeWidth="11"
+                />
+                <motion.circle
+                  cx="84"
+                  cy="84"
+                  r={R}
+                  fill="none"
+                  stroke={
+                    verdict.tone === "pass"
+                      ? "var(--accent)"
+                      : verdict.tone === "warn"
+                        ? "var(--warn)"
+                        : "var(--fail)"
+                  }
+                  strokeWidth="11"
+                  strokeLinecap="round"
+                  strokeDasharray={CIRC}
+                  initial={reduce ? false : { strokeDashoffset: CIRC }}
+                  animate={{ strokeDashoffset: CIRC * (1 - pct / 100) }}
+                  transition={
+                    reduce ? { duration: 0 } : { type: "spring", stiffness: 42, damping: 17 }
+                  }
+                  transform="rotate(-90 84 84)"
+                />
+              </svg>
+              <div className="gauge__center">
+                <span className="gauge__value">{shown}</span>
+                <span className="gauge__scale">out of 100</span>
+              </div>
+            </div>
           </div>
+
+          <span
+            className={cn(
+              "state-pill",
+              verdict.tone === "pass"
+                ? "state-pill--pass"
+                : verdict.tone === "warn"
+                  ? "state-pill--warn"
+                  : "state-pill--fail",
+            )}
+          >
+            {scoreInWords(pct)} · {g}
+          </span>
         </div>
 
+        {/* What the number is, in words */}
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-semibold text-sage-900 dark:bg-sage-900/60 dark:text-sage-200">
-              <span
-                aria-hidden="true"
-                className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sage-500 dark:bg-sage-300"
-              />
-              Fetched Fresh (not cached)
-            </span>
-            <time
-              dateTime={fetchedAt}
-              title={fetchedAt}
-              className="text-xs tabular-nums text-sage-500 dark:text-sage-400"
-            >
-              fetched {fetchedLabel}
-            </time>
-          </div>
+          <p className="panel-eyebrow">
+            <span className="led led--pulse mr-1.5" aria-hidden="true" />
+            Read live {timeAgo(fetchedAt)}
+          </p>
 
-          <div className="mt-2 flex min-w-0 items-center gap-1.5">
-            <LinkIcon
-              className="h-4 w-4 shrink-0 text-sage-400 dark:text-sage-500"
+          <div className="mt-1.5 flex items-start gap-1.5">
+            <Globe
+              className="mt-1 h-4 w-4 shrink-0 text-[var(--text-subtle)]"
+              weight="duotone"
               aria-hidden="true"
             />
             <span
-              className="min-w-0 flex-1 truncate text-sm font-medium text-sage-950 dark:text-sage-50"
+              className="min-w-0 flex-1 break-words text-sm font-medium leading-snug"
               title={finalUrl}
             >
               {finalUrl}
             </span>
-            <CopyButton text={finalUrl} label="Copy page URL" />
+            <CopyButton text={finalUrl} label="Copy page address" />
           </div>
 
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-sage-700 dark:text-sage-300">
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-[var(--text-muted)]">
             <MagnifyingGlass
-              className="h-4 w-4 shrink-0 text-sage-400 dark:text-sage-500"
+              className="h-3.5 w-3.5 shrink-0 text-[var(--text-subtle)]"
               aria-hidden="true"
             />
-            <span>Target search phrase:</span>
-            <span className="font-semibold text-sage-950 dark:text-sage-100">
+            <span>Checked against the phrase</span>
+            <span className="font-semibold text-[var(--text)]">
               &ldquo;{query}&rdquo;
             </span>
-            <span className="rounded-full bg-sage-100 px-2 py-0.5 text-[11px] text-sage-700 dark:bg-sage-900/60 dark:text-sage-400">
-              {querySource === "auto" ? "detected from the page" : "you typed it"}
+            <span className="state-pill">
+              {querySource === "auto" ? "picked from the page" : "you typed"}
             </span>
           </p>
 
-          <div className="mt-3.5 grid gap-2" role="list" aria-label="Subscores">
-            {subs.map((s) => (
-              <div
-                key={s.label}
-                role="listitem"
-                title={`${s.label} ${s.value} of 100`}
-                className="flex items-center gap-2"
-              >
-                <span className="w-24 shrink-0 text-xs font-medium text-sage-600 dark:text-sage-400">
-                  {s.label}
-                </span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-sage-100 dark:bg-sage-900">
+          {/* Three questions instead of three abstract scores */}
+          <dl className="mt-4 space-y-2.5" aria-label="What makes up the score">
+            {axes.map(({ key, value }) => {
+              const axis = AXES[key];
+              const v = axisVerdict(value);
+              return (
+                <div key={key}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <dt className="text-sm font-medium text-[var(--text)]">
+                      {axis.question}
+                    </dt>
+                    <dd className="shrink-0 font-mono text-xs tabular-nums text-[var(--text-muted)]">
+                      {v.word.toLowerCase()} · {value}
+                    </dd>
+                  </div>
                   <div
-                    className="h-full rounded-full bg-sage-500 dark:bg-sage-300 transition-all duration-500"
-                    style={{ width: `${s.value}%` }}
-                  />
+                    className="meter mt-1"
+                    role="meter"
+                    aria-valuenow={value}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={axis.question}
+                  >
+                    <div
+                      className={cn(
+                        "meter__fill",
+                        v.tone === "warn" && "meter__fill--warn",
+                        v.tone === "fail" && "meter__fill--fail",
+                      )}
+                      style={{ width: `${value}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-subtle)]">
+                    {axis.note} · {axis.weight}
+                  </p>
                 </div>
-                <span className="w-8 shrink-0 text-right text-xs font-semibold tabular-nums text-sage-900 dark:text-sage-100">
-                  {s.value}
-                </span>
-              </div>
-            ))}
-          </div>
+              );
+            })}
+          </dl>
         </div>
       </div>
     </section>

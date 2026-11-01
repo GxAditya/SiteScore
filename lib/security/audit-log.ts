@@ -24,6 +24,8 @@ export type SecurityEventName =
   | "rate_limited"
   | "budget_exhausted"
   | "llm.call"
+  | "chat.call"
+  | "chat.failed"
   | "key.used"
   | "security.anomaly";
 

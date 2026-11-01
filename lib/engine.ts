@@ -1,6 +1,6 @@
 import type { Check, Connection, Fix, QueryDerivation, Scores } from "./types";
 import type { AnalyzeInput, PageFacts, SearchResultItem } from "./analyze";
-import { buildChecks, hostOf, normalizeUrl, parsePageFacts } from "./analyze";
+import { buildChecks, hostOf, normalizeUrl, parsePageFacts, searchTitleFor } from "./analyze";
 import { deriveQuery, domainFromUrl } from "./derive-query";
 import { scoreFromChecks } from "./score";
 import { buildFixes } from "./fixes";
@@ -20,6 +20,8 @@ export interface EngineInput {
   siteResults?: SearchResultItem[];
   rankingResults?: SearchResultItem[];
   fetchError?: string | null;
+  /** Title reported by the Fetch API, outside the parsed HTML. */
+  reportedTitle?: string | null;
 }
 
 export interface EngineOutput {
@@ -37,7 +39,12 @@ export interface EngineOutput {
  * checks → scores → fixes → connection. Pure and deterministic.
  */
 export function runAuditEngine(input: EngineInput): EngineOutput {
-  const facts = parsePageFacts(input.html ?? "", input.markdownText);
+  // Same title corroboration buildChecks uses, so facts, checks, fixes and the
+  // narrative never disagree about whether the page has a title.
+  const facts = parsePageFacts(input.html ?? "", input.markdownText, {
+    reportedTitle: input.reportedTitle,
+    searchTitle: searchTitleFor(input.url, input.finalUrl, input.rankingResults, input.siteResults),
+  });
 
   const derived = deriveQuery({
     query: input.query,
@@ -60,6 +67,7 @@ export function runAuditEngine(input: EngineInput): EngineOutput {
     siteResults: input.siteResults,
     rankingResults: input.rankingResults,
     fetchError: input.fetchError,
+    reportedTitle: input.reportedTitle,
   };
 
   const checks = buildChecks(analyzeInput);

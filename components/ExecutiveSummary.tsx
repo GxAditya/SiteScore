@@ -1,26 +1,9 @@
 "use client";
 
+import { ArrowRight, Eye, MagnifyingGlass, ShieldCheck } from "@phosphor-icons/react";
 import type { AuditReport } from "@/lib/audit-types";
-import { gradeFor } from "@/lib/audit-types";
-
-function verdictFor(grade: string, p0Count: number): string {
-  const noun = p0Count === 1 ? "blocking issue keeps" : "blocking issues keep";
-  if (grade === "A")
-    return p0Count > 0
-      ? `Strong foundation - ${p0Count} ${noun} AI search from citing this page.`
-      : "Strong foundation - ready for AI search to cite this page.";
-  if (grade === "B")
-    return p0Count > 0
-      ? `Good progress - ${p0Count} ${noun} AI search from citing this page.`
-      : "Good progress - polish the details to earn more citations.";
-  if (grade === "C")
-    return p0Count > 0
-      ? `Shaky ground - ${p0Count} ${noun} AI search from citing this page.`
-      : "Shaky ground - work through the fixes to earn citations.";
-  return p0Count > 0
-    ? `Critical gaps - ${p0Count} ${noun} AI search from citing this page.`
-    : "Critical gaps - work through the fixes to become citable.";
-}
+import { PRIORITY_COPY, verdictFor } from "@/lib/plain-language";
+import { Term } from "./report/Term";
 
 export default function ExecutiveSummary({
   report,
@@ -29,80 +12,150 @@ export default function ExecutiveSummary({
   report: AuditReport;
   onJumpToFixes: () => void;
 }) {
-  const grade = report.score.grade ?? gradeFor(report.score.total);
-  const p0Count = report.fixes.filter((f) => f.priority === "P0").length;
-  const p1Count = report.fixes.filter((f) => f.priority === "P1").length;
-  const p0 = report.fixes.filter((f) => f.priority === "P0").slice(0, 3);
+  const blockers = report.fixes.filter((f) => f.priority === "P0");
+  const thisWeek = report.fixes.filter((f) => f.priority === "P1").length;
   const indexed = report.search.indexation.indexed;
   const rank = report.search.ranking.rank;
+  const verdict = verdictFor(
+    report.score.total,
+    blockers.length,
+    thisWeek,
+    indexed,
+  );
+
+  const toneClass =
+    verdict.tone === "pass"
+      ? "state-pill--pass"
+      : verdict.tone === "warn"
+        ? "state-pill--warn"
+        : "state-pill--fail";
+
+  const facts = [
+    {
+      icon: MagnifyingGlass,
+      label: "Is this page in search?",
+      value: indexed ? "Yes" : "Not yet",
+      tone: indexed ? "pass" : "fail",
+      note: indexed
+        ? rank != null
+          ? `It is the ${rank === 1 ? "top" : `number ${rank}`} result we saw for your phrase.`
+          : "Search has the page, but it was not in the results we saw for your phrase."
+        : "Search has not got this exact page in its catalogue yet.",
+    },
+    {
+      icon: Eye,
+      label: "Can a machine read it?",
+      value: `${report.score.readability} of 100`,
+      tone:
+        report.score.readability >= 80
+          ? "pass"
+          : report.score.readability >= 55
+            ? "warn"
+            : "fail",
+      note: `A live read pulled ${report.fetch.wordCount.toLocaleString()} words of text from the page.`,
+    },
+    {
+      icon: ShieldCheck,
+      label: "Anything hiding it?",
+      value: blockers.length === 0 ? "No blockers" : `${blockers.length} to clear`,
+      tone: blockers.length === 0 ? "pass" : "fail",
+      note:
+        blockers.length === 0
+          ? "No setting is blocking readers or bots right now."
+          : "These are the items marked fix today in the list below.",
+    },
+  ] as const;
 
   return (
-    <section
-      aria-label="Executive summary"
-      className="card w-full p-4 sm:p-5"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section aria-label="What this means" className="panel p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className={`state-pill ${toneClass} mt-0.5 shrink-0`}>
+          {verdict.tone === "pass" ? "Clear" : verdict.tone === "warn" ? "Some gaps" : "Blocked"}
+        </span>
         <div className="min-w-0">
-          <p className="eyebrow text-sage-500 dark:text-sage-400">
-            Executive summary
+          <h2 className="text-[19px] font-semibold leading-snug tracking-tight sm:text-[21px]">
+            {verdict.headline}
+          </h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">
+            {verdict.move}
           </p>
-          <p className="mt-1 text-[15px] font-semibold leading-snug text-sage-950 dark:text-sage-50">
-            {verdictFor(grade, p0Count)}
-          </p>
-          <p className="body-secondary mt-1 text-sage-600 dark:text-sage-400">
-            {p0Count > 0
-              ? `Start with the ${p0Count} blocking ${p0Count === 1 ? "fix" : "fixes"} - then work through ${p1Count} high-impact improvements.`
-              : p1Count > 0
-                ? `No blocking issues. ${p1Count} high-impact ${p1Count === 1 ? "improvement remains" : "improvements remain"} to earn more citations.`
-                : "No blocking or high-impact issues. Keep the page fast and structured."}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              indexed
-                ? "bg-sage-100 text-sage-800 dark:bg-sage-900/60 dark:text-sage-200"
-                : "bg-coral-50 text-coral-800 dark:bg-coral-950/60 dark:text-coral-200"
-            }`}
-          >
-            {indexed ? "Indexed" : "Not indexed"}
-          </span>
-          <span className="inline-flex items-center rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-semibold text-sage-800 dark:bg-sage-900/60 dark:text-sage-200">
-            {rank != null ? `Rank #${rank}` : "Not ranked"}
-          </span>
         </div>
       </div>
 
-      {p0.length > 0 ? (
-        <div className="mt-3.5 space-y-2">
-          <p className="text-xs font-semibold text-coral-700 dark:text-coral-300">
-            Top Priority Blocking Issues (Fix Today):
+      <dl className="mt-4 grid gap-2 sm:grid-cols-3">
+        {facts.map((f) => (
+          <div key={f.label} className="inset px-3 py-2.5">
+            <dt className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)]">
+              <f.icon className="h-3.5 w-3.5 shrink-0 text-[var(--text-subtle)]" weight="duotone" />
+              {f.label}
+            </dt>
+            <dd className="mt-1">
+              <span
+                className={`state-pill ${
+                  f.tone === "pass"
+                    ? "state-pill--pass"
+                    : f.tone === "warn"
+                      ? "state-pill--warn"
+                      : "state-pill--fail"
+                }`}
+              >
+                {f.value}
+              </span>
+              <span className="mt-1 block text-sm leading-relaxed text-[var(--text-subtle)]">
+                {f.note}
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      {blockers.length > 0 ? (
+        <div className="mt-4">
+          <p className="panel-eyebrow mb-2">
+            {PRIORITY_COPY.P0.label} · {blockers.length}{" "}
+            {blockers.length === 1 ? "item" : "items"}
           </p>
-          <ul className="grid gap-2">
-            {p0.map((f) => (
+          <ul className="inset divide-y divide-[var(--surface-border)] py-0.5">
+            {blockers.slice(0, 3).map((f) => (
               <li key={f.title}>
                 <button
                   type="button"
                   onClick={onJumpToFixes}
-                  className="flex w-full min-w-0 items-center gap-2 rounded-xl border border-sage-100 bg-sage-50/60 px-3 py-2 text-left text-xs text-sage-800 transition-colors hover:border-coral-300 hover:bg-coral-50/50 hover:text-coral-950 dark:border-sage-800 dark:bg-[#111712] dark:text-sage-200 dark:hover:border-coral-800 dark:hover:bg-coral-950/40"
+                  className="check-row w-full text-left"
                 >
-                  <span className="shrink-0 rounded-md bg-coral-500 px-1.5 py-0.5 font-bold text-white text-[10px]">
-                    P0
+                  <span className="pri-tag pri-tag--today">
+                    <span className="pri-tag__code">P0</span>
+                    today
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-medium">
-                    {f.title}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">
+                      {f.title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-sm leading-snug text-[var(--text-muted)]">
+                      {f.why}
+                    </span>
                   </span>
-                  <span className="shrink-0 text-[11px] text-sage-500 transition-colors hover:text-sage-800 dark:hover:text-sage-200">
-                    View fix →
-                  </span>
+                  <ArrowRight
+                    className="mt-1 h-3.5 w-3.5 shrink-0 text-[var(--text-subtle)]"
+                    weight="bold"
+                    aria-hidden="true"
+                  />
                 </button>
               </li>
             ))}
           </ul>
+          {blockers.length > 3 ? (
+            <p className="mt-1.5 text-sm text-[var(--text-subtle)]">
+              Plus {blockers.length - 3} more in the Fixes tab.
+            </p>
+          ) : null}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-sage-600 dark:text-sage-400">
-          No blocking P0 issues - focus on the P1 improvements instead.
+        <p className="mt-4 text-sm leading-relaxed text-[var(--text-muted)]">
+          Nothing is blocking a machine from reading and quoting this page. The
+          remaining items are improvements, and{" "}
+          <Term k="citation">being cited</Term> is mostly about having the
+          clearest answer on the topic.
         </p>
       )}
     </section>

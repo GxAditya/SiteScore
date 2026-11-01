@@ -3,16 +3,25 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   ArrowClockwise,
-  Brain,
+  ArrowUp,
+  CheckCircle,
   CircleNotch,
-  PaperPlaneTilt,
-  Robot,
   User,
   XCircle,
 } from "@phosphor-icons/react";
 import type { ApiFailure, AuditReport, ReportTabId } from "@/lib/audit-types";
+import { buildChatDigest, CHAT_LIMITS } from "@/lib/chat";
 import { buildFullRepairBrief } from "@/lib/agent-prompt";
-import { copyText, gradeBadgeClass, useToast } from "@/lib/ui";
+import { copyText, useToast } from "@/lib/ui";
+import { scoreInWords } from "@/lib/plain-language";
+import { MascotMark } from "@/components/landing/Mascot";
+import { DotMatrix } from "./report/DotMatrix";
+
+interface ChatKeys {
+  tinyfishKey: string;
+  llmKey: string;
+  llmProvider: string;
+}
 
 interface ChatPanelProps {
   report: AuditReport | null;
@@ -21,7 +30,7 @@ interface ChatPanelProps {
   stage: number;
   targetUrl: string;
   targetQuery: string;
-  activeTab: ReportTabId;
+  keys: ChatKeys;
   onSelectTab: (tab: ReportTabId) => void;
   onNewAudit: (url: string, query?: string) => void;
   onRetry: () => void;
@@ -32,15 +41,27 @@ interface ChatMessage {
   sender: "user" | "assistant";
   text: string;
   time: string;
+  /** The model is still composing this answer. */
+  pending?: boolean;
   chips?: Array<{ label: string; action: () => void }>;
 }
 
 const EXECUTION_STAGES = [
-  "Fetching your page fresh with TinyFish (no cached copy)…",
-  "Checking readability, headings, metadata & structured data…",
-  "Checking how the page shows up in live search results…",
-  "Building your score and prioritized fixes…",
+  "Reading your page as it is right now",
+  "Checking whether a machine can follow it",
+  "Looking for you in live search results",
+  "Writing your score and the fix list",
 ];
+
+const ASK_PROMPTS = [
+  "What is stopping me from being cited?",
+  "Why am I not showing up in search?",
+  "Can a machine read my page?",
+];
+
+function nowTime() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function ChatPanel({
   report,
@@ -49,62 +70,61 @@ export default function ChatPanel({
   stage,
   targetUrl,
   targetQuery,
+  keys,
   onSelectTab,
   onNewAudit,
   onRetry,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [extraMessages, setExtraMessages] = useState<ChatMessage[]>([]);
+  const [awaiting, setAwaiting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Initial user prompt message
   const initialUserMessage: ChatMessage = useMemo(
     () => ({
       id: "msg-user-init",
       sender: "user",
-      text: `Audit ${targetUrl}${targetQuery ? ` for query: "${targetQuery}"` : ""}`,
+      text: `Audit ${targetUrl}${targetQuery ? ` for the phrase "${targetQuery}"` : ""}`,
       time: "Just now",
     }),
     [targetUrl, targetQuery],
   );
 
-  // Assistant summary message derived directly from report
   const assistantReportMessage: ChatMessage | null = useMemo(() => {
     if (!report) return null;
 
-    const p0Count = report.fixes.filter((f) => f.priority === "P0").length;
-    const isIndexed = report.search.indexation.indexed;
+    const blockers = report.fixes.filter((f) => f.priority === "P0").length;
+    const indexed = report.search.indexation.indexed;
     const rank = report.search.ranking.rank;
 
-    const summaryText =
+    const text =
       report.aiSummary?.text ||
-      `Audit complete for ${report.input.finalUrl || targetUrl}. Overall score: ${report.score.total}/100 (Grade ${report.score.grade}). ${
-        p0Count > 0
-          ? `Found ${p0Count} blocking P0 issue${p0Count > 1 ? "s" : ""} that stop search engines and AI tools from citing your content.`
-          : "Found no blocking P0 issues - AI assistants can read and cite your page easily."
-      } ${isIndexed ? `Found in the search index (Rank: ${rank != null ? `#${rank}` : "not ranked"}).` : "Not currently found in the search index."}`;
+      `Audit finished for ${report.input.finalUrl || targetUrl}. Score ${report.score.total} out of 100, which reads as ${scoreInWords(
+        report.score.total,
+      ).toLowerCase()}. ${
+        blockers > 0
+          ? `${blockers} ${blockers === 1 ? "item is" : "items are"} blocking answer engines from quoting you.`
+          : "Nothing is blocking an answer engine from quoting you."
+      } ${
+        indexed
+          ? rank != null
+            ? `Search knows the page and ranks it #${rank} for your phrase.`
+            : "Search knows the page, but it is not in the results we saw for your phrase."
+          : "Search does not have this page in its catalogue yet, so nobody can find it."
+      }`;
 
     return {
       id: "msg-assistant-report",
       sender: "assistant",
-      text: summaryText,
+      text,
       time: "Just now",
       chips: [
+        { label: "Show the blockers", action: () => onSelectTab("fixes") },
+        { label: "How it reads", action: () => onSelectTab("readability") },
+        { label: "Where you show up", action: () => onSelectTab("visibility") },
         {
-          label: "View P0 fixes",
-          action: () => onSelectTab("fixes"),
-        },
-        {
-          label: "Readability details",
-          action: () => onSelectTab("readability"),
-        },
-        {
-          label: "Search visibility",
-          action: () => onSelectTab("visibility"),
-        },
-        {
-          label: "Copy repair brief",
+          label: "Copy the fix list",
           action: async () => {
             const brief = buildFullRepairBrief(report.fixes, {
               url: targetUrl,
@@ -112,23 +132,23 @@ export default function ChatPanel({
               query: report.input.query,
             });
             const ok = await copyText(brief);
-            toast(ok ? "Copied repair prompt for AI coding agent" : "Copy failed");
+            toast(
+              ok
+                ? "Copied. Paste it into your coding assistant"
+                : "Copy failed - select the text manually",
+            );
           },
         },
       ],
     };
   }, [report, targetUrl, onSelectTab, toast]);
 
-  // Combined messages list
   const allMessages: ChatMessage[] = useMemo(() => {
     const list: ChatMessage[] = [initialUserMessage];
-    if (assistantReportMessage) {
-      list.push(assistantReportMessage);
-    }
+    if (assistantReportMessage) list.push(assistantReportMessage);
     return [...list, ...extraMessages];
   }, [initialUserMessage, assistantReportMessage, extraMessages]);
 
-  // Auto scroll to bottom on message change or stage update
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
@@ -136,82 +156,170 @@ export default function ChatPanel({
     });
   }, [allMessages.length, stage, loading]);
 
-  function handleSend() {
+  /**
+   * Deterministic answers, read straight out of the report. Used when no model
+   * is configured, and as the fallback whenever a model call fails, so a
+   * question never comes back empty. Also jumps to the tab that shows the
+   * evidence it just described.
+   */
+  function answerFromRules(lower: string): string {
+    if (!report) {
+      return "The audit is still running. Once the results land I can answer in detail.";
+    }
+
+    if (/(block|fix|p0|stop|today)/.test(lower)) {
+      const blockers = report.fixes.filter((f) => f.priority === "P0");
+      onSelectTab("fixes");
+      if (blockers.length > 0) {
+        return (
+          `${blockers.length} ${blockers.length === 1 ? "item is" : "items are"} stopping an answer engine from quoting you:\n` +
+          blockers.map((f, i) => `${i + 1}. **${f.title}**: ${f.why}`).join("\n") +
+          "\n\nI opened the Fixes tab, which has the exact change for each one."
+        );
+      }
+      return "Nothing is blocking you right now. The next tier of changes is in the Fixes tab, marked do this week.";
+    }
+
+    if (/(rank|search|show up|index|found|competitor)/.test(lower)) {
+      const r = report.search.ranking;
+      onSelectTab("visibility");
+      return (
+        `Search has ${report.search.indexation.indexed ? "this page in its catalogue" : "not got this page in its catalogue yet"}. ` +
+        (r.rank != null
+          ? `For "${report.input.query}" you sit at #${r.rank}.`
+          : `For "${report.input.query}" you are not in the results we saw.`) +
+        " The Search tab lists who holds those spots instead."
+      );
+    }
+
+    if (/(read|machine|crawl|fetch|title|heading|ai)/.test(lower)) {
+      onSelectTab("readability");
+      return (
+        `A reader pulled ${report.fetch.wordCount.toLocaleString()} words from the page in ${report.fetch.latencyMs.toLocaleString()} milliseconds. ` +
+        `Main title on the page: ${report.fetch.html.h1 ? "there is one" : "none found"}. ` +
+        `Browser tab name: ${report.fetch.html.title ? `"${report.fetch.html.title}"` : "missing"}. ` +
+        "The Reading tab walks through what a machine can and cannot follow."
+      );
+    }
+
+    if (/(score|grade|number)/.test(lower)) {
+      onSelectTab("overview");
+      return (
+        `Overall ${report.score.total} out of 100 (${scoreInWords(report.score.total)}). ` +
+        `Reading ${report.score.readability}, being found ${report.score.visibility}, plumbing ${report.score.technical}. ` +
+        "The Summary tab explains what moved each one."
+      );
+    }
+
+    return (
+      `From the live read of ${report.input.finalUrl || targetUrl}, your score is ${report.score.total} out of 100. ` +
+      'Open the Fixes tab for the exact changes, or ask "What is stopping me from being cited?".'
+    );
+  }
+
+  async function handleSend() {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || awaiting) return;
     setInput("");
 
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const userMsg: ChatMessage = {
+    const time = nowTime();
+    const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: "user",
       text: trimmed,
-      time: now,
+      time,
     };
 
-    setExtraMessages((prev) => [...prev, userMsg]);
+    const lower = trimmed.toLowerCase();
+    const urlMatch = trimmed.match(
+      /(https?:\/\/[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/i,
+    );
+    const askingHow = lower.startsWith("how") || lower.startsWith("what") || lower.startsWith("why");
 
-    // Check if user entered a URL to audit
-    const urlMatch = trimmed.match(/(https?:\/\/[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/i);
-    if (urlMatch && !trimmed.toLowerCase().startsWith("how") && !trimmed.toLowerCase().startsWith("what")) {
+    // A URL in the box means "read this page instead". That is a new audit, not
+    // a question, and it goes through the audit path.
+    if (urlMatch && !askingHow) {
       const newUrl = urlMatch[0];
-      const assistantAck: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        sender: "assistant",
-        text: `Starting a fresh audit for ${newUrl}…`,
-        time: now,
-      };
-      setExtraMessages((prev) => [...prev, assistantAck]);
+      setExtraMessages((prev) => [
+        ...prev,
+        userMessage,
+        {
+          id: `assistant-${Date.now()}`,
+          sender: "assistant",
+          text: `Starting a fresh read of ${newUrl}. It takes about 90 seconds.`,
+          time,
+        },
+      ]);
       onNewAudit(newUrl);
       return;
     }
 
-    // Contextual answers grounded in the report data
-    setTimeout(() => {
-      let reply = "";
-      const lower = trimmed.toLowerCase();
+    const digest = report ? buildChatDigest(report) : null;
+    const canAskModel =
+      digest !== null && keys.llmProvider === "gemini" && keys.llmKey.trim().length >= 8;
 
-      if (!report) {
-        reply = "The audit is still running. As soon as the results are in, I can answer in-depth questions!";
-      } else if (lower.includes("p0") || lower.includes("fix") || lower.includes("blocking")) {
-        const p0s = report.fixes.filter((f) => f.priority === "P0");
-        if (p0s.length > 0) {
-          reply = `You have ${p0s.length} blocking P0 fix${p0s.length > 1 ? "es" : ""}:\n` +
-            p0s.map((f, i) => `${i + 1}. **${f.title}**: ${f.why}`).join("\n") +
-            `\n\nI've opened the Fixes tab for exact code patches.`;
-          onSelectTab("fixes");
-        } else {
-          reply = "You don't have any blocking P0 fixes! Focus on the P1 improvements shown in the Fixes tab.";
-          onSelectTab("fixes");
-        }
-      } else if (lower.includes("rank") || lower.includes("visibility") || lower.includes("index")) {
-        const r = report.search.ranking;
-        reply = `Search indexing: ${report.search.indexation.indexed ? "Indexed" : "Not indexed"}. ` +
-          `Ranking: ${r.rank != null ? `Rank #${r.rank}` : "Not ranked"} for the search phrase "${report.input.query}". ` +
-          `Open the Visibility tab to see which competitors hold the top results.`;
-        onSelectTab("visibility");
-      } else if (lower.includes("read") || lower.includes("crawl") || lower.includes("fetch")) {
-        reply = `TinyFish read ${report.fetch.wordCount} words from the page in ${report.fetch.latencyMs}ms. ` +
-          `H1 heading: ${report.fetch.html.h1 ? "Present" : "Missing"}. Title: "${report.fetch.html.title || "None"}". ` +
-          `Open the Readability tab to see exactly what was read.`;
-        onSelectTab("readability");
-      } else if (lower.includes("score")) {
-        reply = `Overall Score: ${report.score.total}/100 (Grade ${report.score.grade}). Readability: ${report.score.readability}/100, Visibility: ${report.score.visibility}/100, Technical: ${report.score.technical}/100.`;
-        onSelectTab("overview");
-      } else {
-        reply = `Based on the fresh audit of ${report.input.finalUrl || targetUrl}, your overall AI-readiness score is ${report.score.total}/100. Open the Fixes tab for the exact code changes, or ask something specific like "What are my P0 issues?" or "Why am I not ranking?".`;
-      }
-
+    if (!canAskModel || !digest) {
       setExtraMessages((prev) => [
         ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          sender: "assistant",
-          text: reply,
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
+        userMessage,
+        { id: `assistant-${Date.now()}`, sender: "assistant", text: answerFromRules(lower), time },
       ]);
-    }, 350);
+      return;
+    }
+
+    const history = allMessages.slice(-CHAT_LIMITS.historyTurns).map((m) => ({
+      role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
+      text: m.text.slice(0, CHAT_LIMITS.question),
+    }));
+
+    const pendingId = `assistant-${Date.now()}`;
+    setExtraMessages((prev) => [
+      ...prev,
+      userMessage,
+      { id: pendingId, sender: "assistant", text: "", time, pending: true },
+    ]);
+    setAwaiting(true);
+
+    let answer = "";
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          question: trimmed.slice(0, CHAT_LIMITS.question),
+          history,
+          digest,
+          // Omitted when empty: the route treats an absent key as "use the
+          // platform fallback if the deployment allows it".
+          tinyfishKey: keys.tinyfishKey.trim() || undefined,
+          llmKey: keys.llmKey.trim() || undefined,
+          llmProvider: "gemini",
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { answer?: unknown; generated?: unknown }
+        | null;
+      if (
+        res.ok &&
+        data?.generated === true &&
+        typeof data.answer === "string" &&
+        data.answer.trim().length > 0
+      ) {
+        answer = data.answer.trim();
+      }
+    } catch {
+      answer = "";
+    }
+
+    setAwaiting(false);
+    setExtraMessages((prev) =>
+      prev.map((m) =>
+        m.id === pendingId
+          ? { ...m, pending: false, text: answer || answerFromRules(lower) }
+          : m,
+      ),
+    );
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -223,84 +331,80 @@ export default function ChatPanel({
 
   return (
     <aside
-      aria-label="AI Auditor Chat Panel"
-      className="flex h-full w-full flex-col border-r border-sage-200 bg-sage-50/40 dark:border-sage-800 dark:bg-[#111712]"
+      aria-label="Assistant"
+      className="flex h-full w-full flex-col bg-[var(--surface)]"
     >
-      {/* Chat header */}
-      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sage-200/80 px-4 dark:border-sage-800/80">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sage-500 text-white dark:bg-sage-300 dark:text-sage-950">
-            <Robot className="h-4 w-4" weight="bold" />
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--surface-border)] px-3.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="inset flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+            <MascotMark size={24} />
           </span>
-          <div>
-            <h2 className="text-xs font-bold text-sage-950 dark:text-sage-100">
-              SiteScore AI Agent
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold leading-snug tracking-tight">
+              SiteScore assistant
             </h2>
-            <p className="flex items-center gap-1 text-[11px] text-sage-500 dark:text-sage-400">
-              <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${
-                  loading ? "animate-ping bg-coral-500" : "bg-sage-500"
-                }`}
-              />
-              {loading ? "Analyzing your page…" : "Live Agent"}
+            <p className="flex items-center gap-1.5 text-xs text-[var(--text-subtle)]">
+              <span className={loading ? "led led--warm led--pulse" : "led"} aria-hidden="true" />
+              {loading ? "Reading your page" : "Ready"}
             </p>
           </div>
         </div>
 
-        {report && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-bold ${gradeBadgeClass(
-              report.score.grade,
-            )}`}
-          >
-            Grade {report.score.grade} · {report.score.total}
+        {report && !loading && (
+          <span className="state-pill shrink-0">
+            {report.score.total}/100
+            <span className="opacity-60">{scoreInWords(report.score.total)}</span>
           </span>
         )}
       </div>
 
-      {/* Message stream */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-4 overflow-y-auto p-4 text-xs leading-relaxed"
+        className="flex-1 space-y-3.5 overflow-y-auto p-3.5"
       >
         {allMessages.map((m) => (
           <div
             key={m.id}
-            className={`flex gap-2.5 ${m.sender === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex gap-2 ${m.sender === "user" ? "justify-end" : "justify-start"}`}
           >
             {m.sender === "assistant" && (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-200 text-sage-800 dark:bg-sage-800 dark:text-sage-200">
-                <Brain className="h-3.5 w-3.5" weight="bold" />
+              <span className="inset mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg">
+                <MascotMark size={18} />
               </span>
             )}
 
-            <div
-              className={`max-w-[85%] rounded-2xl px-3 py-2.5 text-[13px] leading-relaxed shadow-2xs ${
-                m.sender === "user"
-                  ? "rounded-br-md bg-sage-600 text-white dark:bg-sage-300 dark:text-sage-950"
-                  : "rounded-bl-md border border-sage-200 bg-white text-sage-900 dark:border-sage-800/80 dark:bg-[#161D17] dark:text-sage-100"
-              }`}
-            >
-              <div className="whitespace-pre-wrap">
-                {m.text.split("**").map((part, i) =>
-                  i % 2 === 1 ? (
-                    <strong key={i} className="font-semibold">
-                      {part}
-                    </strong>
-                  ) : (
-                    <span key={i}>{part}</span>
-                  ),
-                )}
-              </div>
+            <div className={`bubble ${m.sender === "user" ? "bubble--user" : ""}`}>
+              {m.pending ? (
+                <span className="flex items-center gap-2 text-[var(--text-muted)]">
+                  <CircleNotch
+                    className="h-3.5 w-3.5 shrink-0 animate-spin"
+                    weight="bold"
+                    aria-hidden="true"
+                  />
+                  Reading the report
+                </span>
+              ) : (
+                <div className="whitespace-pre-wrap">
+                  {m.text.split("**").map((part, i) =>
+                    i % 2 === 1 ? (
+                      <strong key={i} className="font-semibold">
+                        {part}
+                      </strong>
+                    ) : (
+                      <span key={i}>{part}</span>
+                    ),
+                  )}
+                </div>
+              )}
 
               {m.chips && m.chips.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-sage-100 pt-2 dark:border-sage-800">
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--surface-border)] pt-2.5">
                   {m.chips.map((chip) => (
                     <button
                       key={chip.label}
                       type="button"
                       onClick={chip.action}
-                      className="rounded-full border border-sage-200 bg-sage-50 px-2 py-0.5 text-[11px] font-medium text-sage-800 transition-colors hover:border-sage-400 hover:bg-sage-100 dark:border-sage-700 dark:bg-sage-900/60 dark:text-sage-200 dark:hover:bg-sage-800"
+                      className="composer-chip"
                     >
                       {chip.label}
                     </button>
@@ -308,55 +412,53 @@ export default function ChatPanel({
                 </div>
               )}
 
-              <span
-                className={`mt-1 block text-right text-[10px] ${
-                  m.sender === "user" ? "opacity-75" : "text-sage-400 dark:text-sage-500"
-                }`}
-              >
+              <span className="mt-1.5 block text-right text-xs text-[var(--text)]">
                 {m.time}
               </span>
             </div>
 
             {m.sender === "user" && (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-500 text-white dark:bg-sage-300 dark:text-sage-950">
+              <span className="inset mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--text-subtle)]">
                 <User className="h-3.5 w-3.5" weight="bold" />
               </span>
             )}
           </div>
         ))}
 
-        {/* Live execution progress stream inside chat (Bolt / Lovable style) */}
         {loading && (
-          <div className="rounded-xl border border-sage-200 bg-white/80 p-3 shadow-2xs dark:border-sage-800 dark:bg-[#161D17]">
-            <div className="flex items-center gap-2 font-semibold text-sage-900 dark:text-sage-100">
-              <CircleNotch className="h-4 w-4 animate-spin text-sage-500" weight="bold" />
-              <span>Audit Steps</span>
+          <div className="panel p-3.5">
+            <div className="flex items-center gap-2.5">
+              <DotMatrix size={5} dot={3} gap={1.5} variant="radar" speed={2.9} min={0.05} className="text-[var(--accent)]" />
+              <span className="panel-eyebrow text-xs">Working</span>
+              <CircleNotch
+                className="ml-auto h-3.5 w-3.5 animate-spin text-[var(--text-subtle)]"
+                weight="bold"
+                aria-hidden="true"
+              />
             </div>
 
-            <ol className="mt-2.5 space-y-1.5 border-l-2 border-sage-200 pl-3 dark:border-sage-800">
+            <ol className="mt-3 space-y-1.5 border-l border-dashed border-[var(--surface-border)] pl-3">
               {EXECUTION_STAGES.map((label, idx) => {
-                const isDone = idx < stage;
-                const isCurrent = idx === stage;
+                const done = idx < stage;
+                const current = idx === stage;
                 return (
                   <li
                     key={label}
-                    className={`flex items-center gap-2 text-[11px] ${
-                      isDone
-                        ? "text-sage-700 dark:text-sage-300"
-                        : isCurrent
-                          ? "font-semibold text-sage-950 dark:text-sage-50"
-                          : "text-sage-400 dark:text-sage-600"
+                    className={`flex items-center gap-2 text-sm ${
+                      done
+                        ? "text-[var(--text-muted)]"
+                        : current
+                          ? "font-medium text-[var(--text)]"
+                          : "text-[var(--text-subtle)]"
                     }`}
                   >
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        isDone
-                          ? "bg-sage-500"
-                          : isCurrent
-                            ? "animate-pulse bg-coral-500"
-                            : "bg-sage-200 dark:bg-sage-800"
-                      }`}
-                    />
+                    {done ? (
+                      <CheckCircle weight="fill" className="h-3.5 w-3.5 shrink-0 text-sage-500 dark:text-sage-300" />
+                    ) : current ? (
+                      <span className="led led--pulse" aria-hidden="true" />
+                    ) : (
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--surface-border)]" aria-hidden="true" />
+                    )}
                     <span>{label}</span>
                   </li>
                 );
@@ -365,68 +467,65 @@ export default function ChatPanel({
           </div>
         )}
 
-        {/* Failure card inside chat */}
         {failure && (
-          <div className="rounded-xl border border-coral-300 bg-coral-50/80 p-3 dark:border-coral-900 dark:bg-coral-950/40">
-            <div className="flex items-center gap-2 text-coral-800 dark:text-coral-200 font-semibold">
-              <XCircle className="h-4 w-4" weight="fill" />
-              <span>Audit Failed</span>
+          <div className="bubble bubble--alert">
+            <div className="flex items-center gap-2 font-semibold text-[var(--text)]">
+              <XCircle
+                className="h-4 w-4 shrink-0 text-[var(--fail-strong)]"
+                weight="fill"
+                aria-hidden="true"
+              />
+              <span>The audit stopped</span>
             </div>
-            <p className="mt-1 text-coral-700 dark:text-coral-300">
-              {failure.message}
-            </p>
+            <p className="mt-1.5 text-[var(--text)]">{failure.message}</p>
             <button
               type="button"
               onClick={onRetry}
-              className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-coral-600 px-3 py-1 text-xs font-semibold text-white hover:bg-coral-700"
+              className="composer-chip mt-2.5"
             >
               <ArrowClockwise className="h-3.5 w-3.5" weight="bold" />
-              Retry audit
+              Try again
             </button>
           </div>
         )}
       </div>
 
-      {/* Suggested quick prompt pills */}
-      <div className="border-t border-sage-200/60 bg-white/40 px-3 py-2 dark:border-sage-800/60 dark:bg-[#161D17]/40">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
-          <span className="shrink-0 text-sage-500">Ask:</span>
-          {[
-            "What are my P0 issues?",
-            "Why am I not ranking?",
-            "How do I fix metadata?",
-          ].map((prompt) => (
+      <div className="shrink-0 border-t border-[var(--surface-border)] p-3">
+        <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-2">
+          <span className="panel-eyebrow shrink-0 text-xs">Ask</span>
+          {ASK_PROMPTS.map((prompt) => (
             <button
               key={prompt}
               type="button"
-              onClick={() => {
-                setInput(prompt);
-              }}
-              className="shrink-0 rounded-full border border-sage-200 bg-white px-2.5 py-0.5 text-sage-700 transition-colors hover:border-sage-400 hover:text-sage-950 dark:border-sage-800 dark:bg-[#182019] dark:text-sage-300 dark:hover:text-sage-100"
+              onClick={() => setInput(prompt)}
+              className="composer-chip shrink-0"
             >
               {prompt}
             </button>
           ))}
         </div>
 
-        {/* Input box */}
-        <div className="relative mt-1">
+        <div className="hero-composer composer-mini">
+          <label htmlFor="chat-input" className="sr-only">
+            Ask about this page, or paste another URL
+          </label>
           <input
+            id="chat-input"
             type="text"
-            placeholder="Ask the agent, or paste a new URL to audit…"
+            placeholder="Ask, or paste another URL"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full rounded-2xl border border-sage-200/80 bg-white py-2.5 pl-3.5 pr-10 text-[13px] text-sage-900 transition-all placeholder:text-sage-400 hover:border-sage-300 focus:border-sage-200/80 focus:outline-none focus:shadow-none dark:border-sage-700 dark:bg-[#182019] dark:text-sage-100 dark:placeholder:text-sage-500 dark:hover:border-sage-600 dark:focus:border-sage-700 dark:focus:shadow-none"
+            className="min-w-0 flex-1 bg-transparent px-2 text-sm font-medium text-[var(--text)] placeholder:text-[var(--text-subtle)]"
           />
           <button
             type="button"
             onClick={handleSend}
-            disabled={!input.trim()}
-            aria-label="Send message"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-sage-500 hover:bg-sage-100 hover:text-sage-900 disabled:opacity-40 dark:text-sage-400 dark:hover:bg-sage-800 dark:hover:text-sage-100"
+            disabled={!input.trim() || awaiting}
+            aria-label="Send"
+            className="composer-submit composer-submit--sm"
           >
-            <PaperPlaneTilt className="h-4 w-4" weight="bold" />
+            <ArrowUp className="h-4 w-4" weight="bold" />
           </button>
         </div>
       </div>

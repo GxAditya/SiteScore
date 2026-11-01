@@ -1,8 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="SiteScore logo">
-  <rect x="4" y="4" width="120" height="120" rx="28" fill="#5C7057"/>
-  <rect x="24" y="32" width="62" height="10" rx="5" fill="#F8FAF7"/>
-  <rect x="24" y="52" width="46" height="10" rx="5" fill="#F8FAF7" opacity="0.78"/>
-  <rect x="24" y="72" width="54" height="10" rx="5" fill="#F8FAF7" opacity="0.55"/>
-  <circle cx="92" cy="84" r="19" fill="#F8FAF7"/>
-  <path d="M84 84 l6 6 l12 -13" fill="none" stroke="#5C7057" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128" role="img" aria-labelledby="siteScoreMascotTitle">
+  <title id="siteScoreMascotTitle">SiteScore mascot</title>
+  <defs>
+    <linearGradient id="body" x1="12" y1="16" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9ABC8F"/>
+      <stop offset=".55" stop-color="#6E8B64"/>
+      <stop offset="1" stop-color="#4A6344"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="20" y1="26" x2="44" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22311F"/>
+      <stop offset="1" stop-color="#101A0F"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 17.5v-5" stroke="#4A6344" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="32" cy="8.6" r="6" fill="#D9B56F" opacity=".16"/>
+  <circle cx="32" cy="8.6" r="3.2" fill="#D9B56F"/>
+  <rect x="3.5" y="29.5" width="5" height="11.5" rx="2.5" fill="#4A6344"/>
+  <rect x="55.5" y="29.5" width="5" height="11.5" rx="2.5" fill="#4A6344"/>
+  <rect x="8.5" y="15" width="47" height="43" rx="13.5" fill="url(#body)"/>
+  <path d="M14.5 23.5c2.6-3.7 6.6-5.5 11.4-5.5h12.2c4.8 0 8.8 1.8 11.4 5.5" stroke="#E8F3E1" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/>
+  <rect x="15.5" y="24.5" width="33" height="24" rx="8.5" fill="url(#screen)"/>
+  <path d="M19.5 29c1.8-1.8 4.2-2.6 7-2.6" stroke="#FFFFFF" stroke-opacity=".16" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="24.5" cy="34.6" r="2.55" fill="#E8F7DE"/>
+  <circle cx="39.5" cy="34.6" r="2.55" fill="#E8F7DE"/>
+  <path d="M27.4 41.3c1.7 1.7 7.5 1.7 9.2 0" stroke="#CFE9C4" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="20.6" cy="40.2" r="1.15" fill="#D9B56F" opacity=".55"/>
+  <circle cx="43.4" cy="40.2" r="1.15" fill="#D9B56F" opacity=".55"/>
+  <circle cx="16.5" cy="52.5" r="1.15" fill="#374B32" opacity=".7"/>
+  <circle cx="47.5" cy="52.5" r="1.15" fill="#374B32" opacity=".7"/>
 </svg>
