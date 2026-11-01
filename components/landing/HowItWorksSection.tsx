@@ -220,11 +220,7 @@ export function HowItWorksSection() {
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.6, ease: EASE_OUT }}
       >
-        <span className="section-tag">
-          <span className="led" />
-          How it works
-        </span>
-        <h2 id="how-title" className="section-title mt-5">
+        <h2 id="how-title" className="section-title">
           Three steps. Zero setup.
         </h2>
         <p className="section-sub mx-auto mt-4 max-w-xl">

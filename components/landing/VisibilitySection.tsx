@@ -84,11 +84,7 @@ export function VisibilitySection() {
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.6, ease: EASE_OUT }}
       >
-        <span className="section-tag">
-          <span className="led led--warm" />
-          Why it matters
-        </span>
-        <h2 id="visibility-title" className="section-title mt-5">
+        <h2 id="visibility-title" className="section-title">
           Browsers see pixels.
           <br />
           Assistants read code.

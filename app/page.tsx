@@ -391,11 +391,14 @@ export default function Home() {
 
       <main id="top" className="flex-1 overflow-hidden">
         {/* ============== HERO: chat-first, lit from behind ============== */}
-        <section aria-labelledby="hero-title" className="relative">
+        <section
+          aria-labelledby="hero-title"
+          className="relative min-h-[100svh]"
+        >
           <div className="hero-aura" aria-hidden="true" />
           <div className="hero-dotgrid" aria-hidden="true" />
 
-          <div className="relative mx-auto w-full max-w-5xl px-4 pb-20 pt-32 text-center sm:px-6 sm:pb-24 sm:pt-40">
+          <div className="relative mx-auto flex min-h-[100svh] w-full max-w-5xl flex-col justify-center px-4 pb-16 pt-28 text-center sm:px-6 sm:pb-20 sm:pt-32">
             <motion.h1
               id="hero-title"
               className="mx-auto max-w-4xl text-[2.5rem] font-semibold leading-[1.02] tracking-[var(--tracking-display-tight)] sm:text-[3.6rem] lg:text-[4.1rem]"
